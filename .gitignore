@@ -212,3 +212,5 @@ RunMethod_*
 devinterp_ex_*
 data/
 checkpoint_*_llc_results.json
+my_effective_dim/
+

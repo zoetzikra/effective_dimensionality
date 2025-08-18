@@ -138,7 +138,7 @@ class LLCConfig:
         # ResNet experiments: γ = 1.0
         # Transformer experiments: γ = 100-300
         # General recommendation: Start with γ = 1.0
-        
+        print("Now scaling gamma by model type:")
         if "transformer" in model_lower or "gpt" in model_lower or "bert" in model_lower:
             return 100.0  # Transformers
         elif "resnet" in model_lower or "cnn" in model_lower:
@@ -347,11 +347,28 @@ class LLCMeasurer:
         if save_path and optimal_params:
             print("Estimating LLC with optimal parameters...")
             try:
+                # Temporarily update config to match calibration parameters
+                original_chains = self.config.num_chains
+                original_steps = self.config.num_steps
+                original_burnin = self.config.num_burnin_steps
+                
+                # Use same parameters as calibration for consistency
+                self.config.num_chains = 3
+                self.config.num_steps = 500  # 50 draws + 450 burn-in
+                self.config.num_burnin_steps = 450
+                
+                print(f"Using calibration-consistent parameters: {self.config.num_chains} chains, {self.config.get_effective_draws()} draws")
+                
                 llc_results = self.estimate_llc(
                     model, 
                     train_loader, 
                     hyperparams=optimal_params
                 )
+                
+                # Restore original config
+                self.config.num_chains = original_chains
+                self.config.num_steps = original_steps
+                self.config.num_burnin_steps = original_burnin
                 
                 # Plot the final LLC estimation trace
                 if 'loss/trace' in llc_results:
@@ -383,6 +400,17 @@ class LLCMeasurer:
             with open(os.path.join(save_path, "calibration_results.json"), "w") as f:
                 json.dump(serializable_calibration_results, f, indent=2)
         
+        # Update config with calibrated values for future use
+        if optimal_params:
+            print(f"\n📝 Updating config with calibrated hyperparameters...")
+            self.config.epsilon = optimal_params['epsilon']
+            self.config.nbeta = optimal_params['nbeta']
+            self.config.gamma = optimal_params['gamma'] 
+            # Note: nbeta is typically calculated from dataloader, so we don't update it in config
+            print(f"   Config epsilon: {self.config.epsilon:.2e}")
+            print(f"   Config nbeta: {self.config.nbeta:.3f}")
+            print(f"   Config gamma: {self.config.gamma:.3f}")
+        
         print(f"Calibration complete. Optimal params: {optimal_params}")
         return optimal_params
     
@@ -397,8 +425,8 @@ class LLCMeasurer:
         
         # Create MALA callback for calibration runs too
         mala_callback = MalaAcceptanceRate(
-            num_chains=2,  # Match the number of chains used in calibration
-            num_draws=100,  # Match the number of draws used in calibration
+            num_chains=3,  # Match the number of chains used in calibration
+            num_draws=50,  # Match the number of draws used in calibration
             nbeta=beta,
             learning_rate=epsilon,
             device=self.device
@@ -414,9 +442,9 @@ class LLCMeasurer:
                 localization=self.config.gamma,  # Use fixed gamma for calibration
                 nbeta=beta
             ),
-            num_chains=2,  # Use fewer chains for calibration speed
-            num_draws=100,  # Use fewer draws for calibration speed  # DRAWS NOT STEPS
-            num_burnin_steps=900,  # 90% burn-in for calibration
+            num_chains=3,  # Use fewer chains for calibration speed
+            num_draws=50,  # Use fewer draws for calibration speed  # DRAWS NOT STEPS
+            num_burnin_steps=450,  # 90% burn-in for calibration
             device=self.device,
             online=True,
             callbacks=[mala_callback],  # Add MALA callback for acceptance rate tracking
@@ -503,7 +531,7 @@ class LLCMeasurer:
         return fig
     
     
-    def _extract_optimal_params(self, analyzer: EpsilonBetaAnalyzer, dataloader: DataLoader, selection_method: str = "stability", use_tuned_beta: bool = False) -> Dict[str, float]:
+    def _extract_optimal_params(self, analyzer: EpsilonBetaAnalyzer, dataloader: DataLoader, selection_method: str = "mala", use_tuned_beta: bool = True) -> Dict[str, float]:
         """
         Extract optimal parameters using the proven selection criteria from reference file.
         This is the sophisticated logic that actually works!
@@ -1194,49 +1222,6 @@ class LLCMeasurer:
             print("   Consider adjusting hyperparameters or increasing sampling budget")
         
         print("=" * 50)
-
-
-def load_model_checkpoints(checkpoint_dir: str, model_class: type) -> List[nn.Module]:
-    """
-    Load model checkpoints from a directory.
-    
-    Args:
-        checkpoint_dir: Directory containing checkpoints
-        model_class: Model class to instantiate
-        
-    Returns:
-        List of loaded model checkpoints
-    """
-    checkpoint_path = Path(checkpoint_dir)
-    if not checkpoint_path.exists():
-        raise ValueError(f"Checkpoint directory {checkpoint_dir} does not exist")
-    
-    checkpoints = []
-    checkpoint_files = sorted([f for f in checkpoint_path.glob("*.pth")])
-    
-    for checkpoint_file in checkpoint_files:
-        try:
-            # Load checkpoint
-            checkpoint = torch.load(checkpoint_file, map_location='cpu')
-            
-            # Create model instance
-            model = model_class()
-            
-            # Load state dict
-            if 'model_state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['model_state_dict'])
-            elif 'state_dict' in checkpoint:
-                model.load_state_dict(checkpoint['state_dict'])
-            else:
-                model.load_state_dict(checkpoint)
-            
-            checkpoints.append(model)
-            print(f"Loaded checkpoint: {checkpoint_file.name}")
-            
-        except Exception as e:
-            print(f"Error loading checkpoint {checkpoint_file}: {e}")
-    
-    return checkpoints
 
 
 # def main_llc_measurement_example():

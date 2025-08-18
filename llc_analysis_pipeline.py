@@ -463,7 +463,7 @@ class LLCAnalysisPipeline:
                     checkpoint = torch.load(checkpoint_file, map_location='cpu', weights_only=True)
                 
                 # Debug: Print checkpoint structure
-                print(f"  Checkpoint keys: {list(checkpoint.keys())}")
+                # print(f"  Checkpoint keys: {list(checkpoint.keys())}")
                 
                 # Handle different checkpoint formats
                 loaded_successfully = False
@@ -476,11 +476,11 @@ class LLCAnalysisPipeline:
                     # If rmodel is a PyTorch module, get its state_dict
                     if hasattr(rmodel, 'state_dict'):
                         model_state = rmodel.state_dict()
-                        print(f"  Extracted state_dict with keys: {list(model_state.keys())[:5]}...")
+                        print(f"  Extracted rmodel state_dict")
                         model.load_state_dict(model_state)
                         loaded_successfully = True
                     elif isinstance(rmodel, dict):
-                        print(f"  rmodel is dict with keys: {list(rmodel.keys())[:5]}...")
+                        print(f"  rmodel is a dict")
                         
                         # Check if keys have 'model.' prefix and need stripping
                         model_keys = [k for k in rmodel.keys() if k.startswith('model.')]
@@ -491,7 +491,7 @@ class LLCAnalysisPipeline:
                                 if key.startswith('model.'):
                                     clean_key = key[6:]  # Remove 'model.' prefix
                                     cleaned_state_dict[clean_key] = value
-                            print(f"  Stripped 'model.' prefix, new keys: {list(cleaned_state_dict.keys())[:5]}...")
+                            print(f"  Stripped 'model.' prefix")
                             model.load_state_dict(cleaned_state_dict)
                         else:
                             # Use as-is if no 'model.' prefix
@@ -921,25 +921,6 @@ class LLCAnalysisPipeline:
             model, train_loader, save_path=str(experiment_dir)
         )
         
-        # Estimate LLC with optimal parameters and create final trace
-        print("Estimating LLC with optimal parameters...")
-        llc_results = self.measurer.estimate_llc(
-            model, 
-            train_loader, 
-            hyperparams=optimal_params
-        )
-        
-        # Plot the final LLC estimation trace
-        if 'loss/trace' in llc_results:
-            final_trace_path = experiment_dir / "final_llc_trace.png"
-            self.measurer.plot_sampling_evolution(
-                llc_results, 
-                save_path=str(final_trace_path), 
-                show=False
-            )
-            print(f"Final LLC trace plot saved to {final_trace_path}")
-            print(f"Final trace shape: {llc_results['loss/trace'].shape}")
-        
         # Save results
         results = {
             "model_name": model_name,
@@ -1020,6 +1001,8 @@ def main():
                        help="Skip hyperparameter calibration and use pre-calibrated parameters")
     parser.add_argument("--calibration_path", type=str,
                        help="Path to pre-calibrated hyperparameters JSON file")
+    parser.add_argument("--max_checkpoints", type=int, default=None,
+                       help="Maximum number of checkpoints to analyze (default: all)")
     
     args = parser.parse_args()
     
@@ -1071,6 +1054,7 @@ def main():
             model_name=args.model_name,
             dataset_name=args.dataset,
             defense_method=args.defense_method,
+            max_checkpoints=args.max_checkpoints,
             skip_calibration=args.skip_calibration,
             calibration_path=args.calibration_path
         )
@@ -1093,6 +1077,7 @@ def main():
             model_name=args.model_name,
             dataset_name=args.dataset,
             defense_method=args.defense_method,
+            max_checkpoints=args.max_checkpoints,
             adversarial_attack=args.adversarial_attack,
             adversarial_eps=args.adversarial_eps,
             adversarial_steps=args.adversarial_steps

@@ -1,0 +1,18 @@
+{
+  "model_name": "LeNet",
+  "dataset_name": "MNIST",
+  "defense_method": "Standard",
+  "model_path": "./models/LeNet_Standard/epoch_iter/00001_00000.pth",
+  "optimal_params": {
+    "epsilon": 9.999999999999999e-06,
+    "gamma": 1.0,
+    "nbeta": 0.8207331788168325,
+    "llc_mean": 0.4830307066440582,
+    "llc_std": 0.379350483417511,
+    "llc_std_over_mean": 0.5681649446487427,
+    "beta_source": "tuned",
+    "gamma_source": "fixed_config",
+    "mala_acceptance": 0.8668665885925293
+  },
+  "experiment_dir": "llc_analysis/llc_analysis_20250818_122550/LeNet_MNIST_Standard_calibration"
+}

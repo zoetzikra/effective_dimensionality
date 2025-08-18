@@ -1,0 +1,12 @@
+LLC Analysis Summary Report
+==================================================
+Analysis Date: 2025-08-18 12:58:58
+Results Directory: llc_analysis/llc_analysis_20250818_124516
+
+Total Experiments: 1
+
+Experiment: LeNet_MNIST_Standard_calibration
+  - calibration_only_results.json
+  - calibration_results.json
+  - final_llc_trace.png
+
