@@ -1,0 +1,10 @@
+LLC Analysis Summary Report
+==================================================
+Analysis Date: 2025-07-24 23:56:25
+Results Directory: llc_analysis/llc_analysis_20250724_234907
+
+Total Experiments: 1
+
+Experiment: LeNet_AT_single
+  - analysis_results.json
+

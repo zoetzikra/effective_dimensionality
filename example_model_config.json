@@ -1,0 +1,26 @@
+[
+  [
+    "./models/ResNet18_AT/best_Clean(Val).pth",
+    "ResNet18",
+    "AT",
+    "Adversarial Training"
+  ],
+  [
+    "./models/ResNet18_TRADES/best_Clean(Val).pth",
+    "ResNet18",
+    "TRADES",
+    "TRADES Defense"
+  ],
+  [
+    "./models/ResNet18_MART/best_Clean(Val).pth",
+    "ResNet18",
+    "MART",
+    "MART Defense"
+  ],
+  [
+    "./models/ResNet18_Standard/best_Clean(Val).pth",
+    "ResNet18",
+    "Standard",
+    "Standard Training"
+  ]
+] 

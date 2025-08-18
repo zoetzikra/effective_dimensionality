@@ -1,0 +1,57 @@
+#!/bin/bash
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
+#SBATCH --job-name=adversarial_grokking_ffcv
+#SBATCH --output=RunMethod_%A_h100_test_LLC_measurement_LeNet_Standard.out
+#SBATCH --time=12:00:00
+#SBATCH --mem=40G
+#SBATCH --hint=nomultithread
+
+echo "✅ Job started at: $(date)"
+
+# Load modules
+module purge
+module load 2023
+module load Anaconda3/2023.07-2
+module load CUDA/12.1.1
+
+source activate devinterp_env
+
+
+# python inspect_checkpoint.py ./models/LeNet_Standard/epoch_iter/00001_00000.pth
+
+python llc_analysis_pipeline.py --mode trajectory \
+    --checkpoint_dir ./models/LeNet_Standard/epoch_iter \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method Standard \
+
+
+# python llc_analysis_pipeline.py --mode trajectory \
+#     --checkpoint_dir ./models/LeNet_AT_quick/checkpoints \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method AT \
+#     --skip_calibration \
+#     --calibration_path ./llc_analysis/llc_analysis_20250723_191833/LeNet_MNIST_AT_trajectory/calibration/calibration_results.json
+
+# python llc_analysis_pipeline.py --mode single \
+#     --model_path ./models/LeNet_AT_quick/checkpoints/checkpoint_epoch_10.pth \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method AT \
+#     --skip_calibration \
+#     --calibration_path ./llc_analysis/llc_analysis_20250723_191833/LeNet_MNIST_AT_trajectory/calibration/calibration_results.json
+
+# python llc_analysis_pipeline.py --mode trajectory \
+#     --checkpoint_dir /your/checkpoint/directory \
+#     --model_name LeNet \
+#     --dataset CIFAR10 \
+#     --defense_method PGD \
+#     --skip_calibration \
+#     --calibration_path /path/to/your/calibration_results.json
+
+# python debug_llc.py ./models/LeNet_AT_quick/checkpoints/checkpoint_epoch_10.pth
+
+echo "✅ Job completed at: $(date)"

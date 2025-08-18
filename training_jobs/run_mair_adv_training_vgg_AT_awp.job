@@ -3,7 +3,7 @@
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=8
 #SBATCH --job-name=adversarial_grokking_ffcv
-#SBATCH --output=RunMethod_%A_h100_AT_replication_complete.out
+#SBATCH --output=RunMethod_%A_vgg_AT_awp_h100_replication_complete.out
 #SBATCH --time=12:00:00
 #SBATCH --mem=40G
 #SBATCH --hint=nomultithread
@@ -20,5 +20,6 @@ source activate devinterp_env
 
 # python AT_replication_single_model.py
 
-python AT_replication_complete.py --model ResNet18 --method Standard
+
+python AT_replication_complete.py --model VGG11 --method AT --awp
 

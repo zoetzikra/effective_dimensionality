@@ -1,0 +1,11 @@
+LLC Analysis Summary Report
+==================================================
+Analysis Date: 2025-07-25 11:52:29
+Results Directory: llc_analysis/llc_analysis_20250725_114429
+
+Total Experiments: 1
+
+Experiment: LeNet_MNIST_AT_trajectory
+  - trajectory_results.json
+  - llc_trajectory_enhanced.png
+

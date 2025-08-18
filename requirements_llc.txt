@@ -1,0 +1,21 @@
+# Requirements for LLC Measurement
+
+# Core dependencies
+torch>=1.9.0
+torchvision>=0.10.0
+numpy>=1.21.0
+matplotlib>=3.5.0
+
+# devinterp library for LLC measurement
+devinterp>=0.1.0
+
+# Additional dependencies for analysis
+pandas>=1.3.0
+tqdm>=4.62.0
+scipy>=1.7.0
+
+# Optional: for advanced visualization
+seaborn>=0.11.0
+
+# Optional: for statistical analysis
+scikit-learn>=1.0.0 
