@@ -327,7 +327,7 @@ class LLCAnalysisPipeline:
             epsilon=self.llc_config.epsilon,
             gamma=self.llc_config.gamma,
             num_chains=self.llc_config.num_chains,
-            num_draws=self.llc_config.num_draws,
+            num_steps=self.llc_config.num_steps,
             batch_size=self.llc_config.batch_size,
             data_type="clean"
         )
@@ -336,7 +336,7 @@ class LLCAnalysisPipeline:
             epsilon=self.llc_config.epsilon,
             gamma=self.llc_config.gamma,
             num_chains=self.llc_config.num_chains,
-            num_draws=self.llc_config.num_draws,
+            num_steps=self.llc_config.num_steps,
             batch_size=self.llc_config.batch_size,
             data_type="adversarial",
             adversarial_attack=adversarial_attack,

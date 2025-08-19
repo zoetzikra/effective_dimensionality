@@ -238,6 +238,9 @@ class LLCMeasurer:
         """
         Generate adversarial examples for LLC evaluation.
         
+        Note: This function assumes the model is already in eval mode (as set by evaluate_model).
+        The model remains in eval mode throughout adversarial generation.
+        
         Args:
             model: Model to attack
             inputs: Clean inputs
@@ -259,16 +262,33 @@ class LLCMeasurer:
         """PGD attack implementation"""
         inputs_adv = inputs.clone().detach().requires_grad_(True)
         
+        # Zero out any existing gradients on model parameters to avoid interference
+        model.zero_grad()
+        
         for step in range(self.config.adversarial_steps):
+            # Zero out any existing gradients on inputs
+            if inputs_adv.grad is not None:
+                inputs_adv.grad.zero_()
+            
             outputs = model(inputs_adv)
             loss = nn.CrossEntropyLoss()(outputs, targets)
-            loss.backward()
+            
+            # Compute gradients w.r.t. inputs only
+            grad_outputs = torch.autograd.grad(
+                outputs=loss,
+                inputs=inputs_adv,
+                create_graph=False,
+                retain_graph=False,
+                only_inputs=True
+            )[0]
             
             with torch.no_grad():
-                grad = inputs_adv.grad.sign()
-                inputs_adv = inputs_adv + self.config.adversarial_eps / self.config.adversarial_steps * grad
+                grad_sign = grad_outputs.sign()
+                inputs_adv = inputs_adv + self.config.adversarial_eps / self.config.adversarial_steps * grad_sign
                 inputs_adv = torch.clamp(inputs_adv, 0, 1)
-                inputs_adv.grad.zero_()
+                
+                # Detach and re-enable gradients for next iteration
+                inputs_adv = inputs_adv.detach().requires_grad_(True)
         
         return inputs_adv.detach()
     
@@ -276,13 +296,24 @@ class LLCMeasurer:
         """FGSM attack implementation"""
         inputs_adv = inputs.clone().detach().requires_grad_(True)
         
+        # Zero out any existing gradients on model parameters to avoid interference
+        model.zero_grad()
+        
         outputs = model(inputs_adv)
         loss = nn.CrossEntropyLoss()(outputs, targets)
-        loss.backward()
+        
+        # Compute gradients w.r.t. inputs only
+        grad_outputs = torch.autograd.grad(
+            outputs=loss,
+            inputs=inputs_adv,
+            create_graph=False,
+            retain_graph=False,
+            only_inputs=True
+        )[0]
         
         with torch.no_grad():
-            grad = inputs_adv.grad.sign()
-            inputs_adv = inputs_adv + self.config.adversarial_eps * grad
+            grad_sign = grad_outputs.sign()
+            inputs_adv = inputs_adv + self.config.adversarial_eps * grad_sign
             inputs_adv = torch.clamp(inputs_adv, 0, 1)
         
         return inputs_adv.detach()
@@ -354,8 +385,8 @@ class LLCMeasurer:
                 
                 # Use same parameters as calibration for consistency
                 self.config.num_chains = 3
-                self.config.num_steps = 500  # 50 draws + 450 burn-in
-                self.config.num_burnin_steps = 450
+                self.config.num_steps = 300 #500  # 50 draws + 450 burn-in
+                self.config.num_burnin_steps = 270 #450
                 
                 print(f"Using calibration-consistent parameters: {self.config.num_chains} chains, {self.config.get_effective_draws()} draws")
                 

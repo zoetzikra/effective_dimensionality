@@ -21,11 +21,11 @@ source activate devinterp_env
 
 # python inspect_checkpoint.py ./models/LeNet_Standard/epoch_iter/00001_00000.pth
 
-# python llc_analysis_pipeline.py --mode trajectory \
-#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter \
-#     --model_name LeNet \
-#     --dataset MNIST \
-#     --defense_method Standard \
+python llc_analysis_pipeline.py --mode trajectory \
+    --checkpoint_dir ./models/LeNet_Standard/epoch_iter \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method Standard \
 
 # python llc_analysis_pipeline.py --mode calibration \
 #     --model_path ./models/LeNet_Standard/epoch_iter/00001_00000.pth \
@@ -33,13 +33,13 @@ source activate devinterp_env
 #     --dataset MNIST \
 #     --defense_method Standard \
 
-python llc_analysis_pipeline.py --mode trajectory \
-    --checkpoint_dir ./models/LeNet_Standard/epoch_iter \
-    --model_name LeNet \
-    --dataset MNIST \
-    --defense_method Standard \
-    --skip_calibration \
-    --calibration_path ./llc_analysis/llc_analysis_20250818_124516/LeNet_MNIST_Standard_calibration/calibration_results.json
+# python llc_analysis_pipeline.py --mode trajectory \
+#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method Standard \
+#     --skip_calibration \
+#     --calibration_path ./llc_analysis/llc_analysis_20250818_124516/LeNet_MNIST_Standard_calibration/calibration_results.json
 
 # python llc_analysis_pipeline.py --mode single \
 #     --model_path ./models/LeNet_AT_quick/checkpoints/checkpoint_epoch_10.pth \

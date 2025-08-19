@@ -22,7 +22,7 @@ source activate devinterp_env
 
 
 # Analyze single method
-python effective_dimensionality_analysis.py --model LeNet --defense Standard --max_checkpoints 10 
+# python effective_dimensionality_analysis.py --model LeNet --defense Standard --max_checkpoints 10 
 
 # Compare multiple methods
 # python effective_dimensionality_analysis.py --model LeNet --compare
@@ -32,3 +32,6 @@ python effective_dimensionality_analysis.py --model LeNet --defense Standard --m
 
 # # Save plot to specific location
 # python effective_dimensionality_analysis.py --model LeNet --defense AT --save_plot my_plot.png
+
+
+python plot_effective_dimensionality.py LeNet_Standard_effective_dim_trajectory.json --style paper 

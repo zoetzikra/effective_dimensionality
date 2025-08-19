@@ -1,0 +1,61 @@
+{
+  "checkpoint_names": [
+    "checkpoint_0",
+    "checkpoint_1",
+    "checkpoint_2",
+    "checkpoint_3",
+    "checkpoint_4",
+    "checkpoint_5",
+    "checkpoint_6",
+    "checkpoint_7",
+    "checkpoint_8",
+    "checkpoint_9"
+  ],
+  "llc_means": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "llc_stds": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "mala_rates": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+  ],
+  "hyperparams": {
+    "epsilon": 1e-06,
+    "gamma": 1.0,
+    "nbeta": 0.8207331788168325,
+    "llc_mean": 31.6957950592041,
+    "llc_std": 3.5758862495422363,
+    "llc_std_over_mean": 0.13664282858371735,
+    "beta_source": "tuned",
+    "gamma_source": "fixed_config",
+    "mala_acceptance": 0.6197894811630249
+  }
+}
