@@ -207,7 +207,7 @@ def plot_results(results, model_name, defense_method, save_path=None):
     print(f"  Max Eigenvalue Range: {min(max_eigs):.6f} - {max(max_eigs):.6f}")
 
 def compare_multiple_methods(model_name="LeNet", defense_methods=["Standard", "AT", "TRADES"], 
-                           max_checkpoints=10, nsteps=50):
+                           max_checkpoints=10, nsteps=50, output_dir=None):
     """
     Compare effective dimensionality across multiple defense methods
     
@@ -216,7 +216,21 @@ def compare_multiple_methods(model_name="LeNet", defense_methods=["Standard", "A
         defense_methods: List of defense methods to compare
         max_checkpoints: Maximum checkpoints per method
         nsteps: Lanczos steps
+        output_dir: Directory to save results (creates organized structure)
     """
+    from datetime import datetime
+    from pathlib import Path
+    
+    # Create organized output directory
+    if output_dir is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = f'/home/ztzifa/effective_dimensionality/eff_dim_analysis/eff_dim_analysis_{timestamp}'
+    
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    print(f"📁 Results will be saved to: {output_path}")
+    
     all_results = {}
     
     for defense_method in defense_methods:
@@ -224,16 +238,32 @@ def compare_multiple_methods(model_name="LeNet", defense_methods=["Standard", "A
         results = analyze_checkpoints(model_name, defense_method, max_checkpoints, nsteps)
         if results:
             all_results[defense_method] = results
+            
+            # Save individual results
+            method_results_path = output_path / f"{model_name}_{defense_method}_effective_dim.json"
+            with open(method_results_path, 'w') as f:
+                json.dump(results, f, indent=2)
+            print(f"  💾 Individual results saved: {method_results_path}")
+            
+            # Save individual plot
+            method_plot_path = output_path / f"{model_name}_{defense_method}_effective_dim.png"
+            plot_results(results, model_name, defense_method, str(method_plot_path))
     
     if not all_results:
         print("No results to compare!")
         return
     
+    # Save combined results
+    combined_results_path = output_path / f"{model_name}_all_methods_effective_dim.json"
+    with open(combined_results_path, 'w') as f:
+        json.dump(all_results, f, indent=2)
+    print(f"📊 Combined results saved: {combined_results_path}")
+    
     # Create comparison plot
     plt.rcParams.update({'font.size': 12})
     fig, ax = plt.subplots(figsize=(12, 8))
     
-    colors = ['blue', 'red', 'green', 'orange', 'purple']
+    colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink']
     
     for i, (method, results) in enumerate(all_results.items()):
         checkpoints = list(results.keys())
@@ -251,12 +281,73 @@ def compare_multiple_methods(model_name="LeNet", defense_methods=["Standard", "A
     plt.tight_layout()
     
     # Save comparison plot
-    save_path = f'/home/ztzifa/effective_dimensionality/{model_name}_defense_comparison.png'
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"\nComparison plot saved to: {save_path}")
-    plt.show()
+    comparison_plot_path = output_path / f"{model_name}_defense_methods_comparison.png"
+    plt.savefig(comparison_plot_path, dpi=300, bbox_inches='tight')
+    print(f"🎨 Comparison plot saved: {comparison_plot_path}")
+    plt.close()
     
-    return all_results
+    return all_results, str(output_path)
+
+def batch_analyze_models(models_and_methods, max_checkpoints=10, nsteps=50, output_base_dir=None):
+    """
+    Batch analyze multiple models and defense methods
+    
+    Args:
+        models_and_methods: Dict like {"LeNet": ["Standard", "AT"], "ResNet18": ["Standard", "AT", "MART"]}
+        max_checkpoints: Maximum checkpoints per method
+        nsteps: Lanczos steps
+        output_base_dir: Base directory for all results
+    
+    Returns:
+        Dictionary with all results organized by model
+    """
+    from datetime import datetime
+    from pathlib import Path
+    
+    if output_base_dir is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_base_dir = f'/home/ztzifa/effective_dimensionality/eff_dim_analysis/batch_analysis_{timestamp}'
+    
+    base_path = Path(output_base_dir)
+    base_path.mkdir(parents=True, exist_ok=True)
+    
+    print(f"🚀 Starting batch analysis...")
+    print(f"📁 Results will be saved to: {base_path}")
+    
+    all_model_results = {}
+    
+    for model_name, defense_methods in models_and_methods.items():
+        print(f"\n🔍 Analyzing {model_name} with methods: {defense_methods}")
+        
+        model_output_dir = base_path / f"{model_name}_analysis"
+        results, output_path = compare_multiple_methods(
+            model_name=model_name,
+            defense_methods=defense_methods,
+            max_checkpoints=max_checkpoints,
+            nsteps=nsteps,
+            output_dir=str(model_output_dir)
+        )
+        
+        all_model_results[model_name] = {
+            'results': results,
+            'output_path': output_path
+        }
+    
+    # Save master results file
+    master_results_path = base_path / "batch_analysis_summary.json"
+    summary = {
+        'timestamp': datetime.now().isoformat(),
+        'models_analyzed': list(models_and_methods.keys()),
+        'results_paths': {model: data['output_path'] for model, data in all_model_results.items()}
+    }
+    
+    with open(master_results_path, 'w') as f:
+        json.dump(summary, f, indent=2)
+    
+    print(f"\n✅ Batch analysis complete!")
+    print(f"📋 Master summary saved: {master_results_path}")
+    
+    return all_model_results, str(base_path)
 
 def main():
     """Main function with command line interface"""
@@ -271,20 +362,37 @@ def main():
     parser.add_argument("--nsteps", type=int, default=50,
                        help="Number of Lanczos steps")
     parser.add_argument("--compare", action="store_true",
-                       help="Compare multiple defense methods")
+                       help="Compare multiple defense methods for single model")
+    parser.add_argument("--batch", action="store_true",
+                       help="Batch process multiple models and methods")
+    parser.add_argument("--output_dir", type=str,
+                       help="Custom output directory")
     parser.add_argument("--save_plot", type=str,
                        help="Path to save the plot")
     
     args = parser.parse_args()
     
-    if args.compare:
-        # Compare multiple methods
+    if args.batch:
+        # Batch analyze multiple models and methods
+        models_and_methods = {
+            "LeNet": ["Standard", "AT", "TRADES"],
+            "ResNet18": ["Standard", "AT", "MART", "ATAWP"],
+            "VGG11": ["Standard", "AT"]
+        }
+        
+        print("🚀 Starting batch analysis of multiple models...")
+        batch_analyze_models(models_and_methods, args.max_checkpoints, args.nsteps, args.output_dir)
+        
+    elif args.compare:
+        # Compare multiple methods for single model
         defense_methods = ["Standard", "AT", "TRADES"]
-        if args.model == "LeNet":
-            defense_methods = ["Standard", "AT", "TRADES"]  # Add more if available
+        if args.model == "ResNet18":
+            defense_methods = ["Standard", "AT", "MART"]  # Add MART for ResNet18
+        elif args.model == "VGG11":
+            defense_methods = ["Standard", "AT"]  # Fewer methods for VGG11
         
         compare_multiple_methods(args.model, defense_methods, 
-                               args.max_checkpoints, args.nsteps)
+                               args.max_checkpoints, args.nsteps, args.output_dir)
     else:
         # Analyze single method
         results = analyze_checkpoints(args.model, args.defense, 

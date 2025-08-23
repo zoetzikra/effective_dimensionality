@@ -1,0 +1,157 @@
+{
+  "model_name": "LeNet",
+  "dataset_name": "MNIST",
+  "defense_method": "Standard",
+  "checkpoint_dir": "./models/LeNet_Standard/epoch_iter",
+  "num_checkpoints": 10,
+  "optimal_params": {
+    "epsilon": 1e-06,
+    "gamma": 1.0,
+    "nbeta": 0.8207331788168325,
+    "llc_mean": 0.07859364151954651,
+    "llc_std": 0.02079744264483452,
+    "llc_std_over_mean": 0.30646565556526184,
+    "beta_source": "tuned",
+    "gamma_source": "fixed_config",
+    "mala_acceptance": 0.9590054750442505
+  },
+  "adversarial_config": {
+    "attack": "pgd",
+    "eps": 0.03137254901960784,
+    "steps": 10
+  },
+  "clean_trajectory": {
+    "checkpoint_names": [
+      "checkpoint_0",
+      "checkpoint_1",
+      "checkpoint_2",
+      "checkpoint_3",
+      "checkpoint_4",
+      "checkpoint_5",
+      "checkpoint_6",
+      "checkpoint_7",
+      "checkpoint_8",
+      "checkpoint_9"
+    ],
+    "llc_means": [
+      0.07169506698846817,
+      0.027915440499782562,
+      0.045692406594753265,
+      0.059317804872989655,
+      0.08725985884666443,
+      0.06118030101060867,
+      0.04750412330031395,
+      0.09594094008207321,
+      0.07251391559839249,
+      0.11572913080453873
+    ],
+    "llc_stds": [
+      0.014340766705572605,
+      0.0058848001062870026,
+      0.010609240271151066,
+      0.009488174691796303,
+      0.01727158948779106,
+      0.013296566903591156,
+      0.01103263534605503,
+      0.017521094530820847,
+      0.014029807411134243,
+      0.02303834818303585
+    ],
+    "mala_rates": [
+      0.9517868757247925,
+      0.9586684703826904,
+      0.9583473205566406,
+      0.9508751034736633,
+      0.9544682502746582,
+      0.9557507038116455,
+      0.9557788372039795,
+      0.954694926738739,
+      0.9598302841186523,
+      0.9557384848594666
+    ],
+    "hyperparams": {
+      "epsilon": 1e-06,
+      "gamma": 1.0,
+      "nbeta": 0.8207331788168325,
+      "llc_mean": 0.07859364151954651,
+      "llc_std": 0.02079744264483452,
+      "llc_std_over_mean": 0.30646565556526184,
+      "beta_source": "tuned",
+      "gamma_source": "fixed_config",
+      "mala_acceptance": 0.9590054750442505
+    }
+  },
+  "adversarial_trajectory": {
+    "checkpoint_names": [
+      "checkpoint_0",
+      "checkpoint_1",
+      "checkpoint_2",
+      "checkpoint_3",
+      "checkpoint_4",
+      "checkpoint_5",
+      "checkpoint_6",
+      "checkpoint_7",
+      "checkpoint_8",
+      "checkpoint_9"
+    ],
+    "llc_means": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "llc_stds": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "mala_rates": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "hyperparams": {
+      "epsilon": 1e-06,
+      "gamma": 1.0,
+      "nbeta": 0.8207331788168325,
+      "llc_mean": 0.07859364151954651,
+      "llc_std": 0.02079744264483452,
+      "llc_std_over_mean": 0.30646565556526184,
+      "beta_source": "tuned",
+      "gamma_source": "fixed_config",
+      "mala_acceptance": 0.9590054750442505
+    }
+  },
+  "checkpoint_names": [
+    "checkpoint_0",
+    "checkpoint_1",
+    "checkpoint_2",
+    "checkpoint_3",
+    "checkpoint_4",
+    "checkpoint_5",
+    "checkpoint_6",
+    "checkpoint_7",
+    "checkpoint_8",
+    "checkpoint_9"
+  ]
+}

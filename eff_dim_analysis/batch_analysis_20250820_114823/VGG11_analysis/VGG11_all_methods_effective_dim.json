@@ -1,0 +1,126 @@
+{
+  "Standard": {
+    "0": {
+      "checkpoint": "00001_00000.pth",
+      "effective_dimensionality": 2.099327325820923,
+      "max_eigenvalue": 1.3287434577941895,
+      "num_eigenvalues": 50
+    },
+    "1": {
+      "checkpoint": "00021_00000.pth",
+      "effective_dimensionality": 21.99333381652832,
+      "max_eigenvalue": 26.8950138092041,
+      "num_eigenvalues": 50
+    },
+    "2": {
+      "checkpoint": "00041_00000.pth",
+      "effective_dimensionality": 23.051464080810547,
+      "max_eigenvalue": 31.46254539489746,
+      "num_eigenvalues": 50
+    },
+    "3": {
+      "checkpoint": "00061_00000.pth",
+      "effective_dimensionality": 23.014892578125,
+      "max_eigenvalue": 25.988418579101562,
+      "num_eigenvalues": 50
+    },
+    "4": {
+      "checkpoint": "00081_00000.pth",
+      "effective_dimensionality": 22.657962799072266,
+      "max_eigenvalue": 27.504655838012695,
+      "num_eigenvalues": 50
+    },
+    "5": {
+      "checkpoint": "00101_00000.pth",
+      "effective_dimensionality": 21.75279998779297,
+      "max_eigenvalue": 12.438015937805176,
+      "num_eigenvalues": 50
+    },
+    "6": {
+      "checkpoint": "00121_00000.pth",
+      "effective_dimensionality": 27.591081619262695,
+      "max_eigenvalue": 28.51336097717285,
+      "num_eigenvalues": 50
+    },
+    "7": {
+      "checkpoint": "00141_00000.pth",
+      "effective_dimensionality": 29.747882843017578,
+      "max_eigenvalue": 49.116416931152344,
+      "num_eigenvalues": 50
+    },
+    "8": {
+      "checkpoint": "00161_00000.pth",
+      "effective_dimensionality": 20.765710830688477,
+      "max_eigenvalue": 11.12708854675293,
+      "num_eigenvalues": 50
+    },
+    "9": {
+      "checkpoint": "00181_00000.pth",
+      "effective_dimensionality": 17.673498153686523,
+      "max_eigenvalue": 7.716534614562988,
+      "num_eigenvalues": 50
+    }
+  },
+  "AT": {
+    "0": {
+      "checkpoint": "00001_00000.pth",
+      "effective_dimensionality": 0.07510703802108765,
+      "max_eigenvalue": 1.0,
+      "num_eigenvalues": 50
+    },
+    "1": {
+      "checkpoint": "00021_00000.pth",
+      "effective_dimensionality": 17.67302703857422,
+      "max_eigenvalue": 17.494020462036133,
+      "num_eigenvalues": 50
+    },
+    "2": {
+      "checkpoint": "00041_00000.pth",
+      "effective_dimensionality": 18.168800354003906,
+      "max_eigenvalue": 14.866324424743652,
+      "num_eigenvalues": 50
+    },
+    "3": {
+      "checkpoint": "00061_00000.pth",
+      "effective_dimensionality": 18.31800079345703,
+      "max_eigenvalue": 14.230549812316895,
+      "num_eigenvalues": 50
+    },
+    "4": {
+      "checkpoint": "00081_00000.pth",
+      "effective_dimensionality": 18.19617462158203,
+      "max_eigenvalue": 16.556617736816406,
+      "num_eigenvalues": 50
+    },
+    "5": {
+      "checkpoint": "00101_00000.pth",
+      "effective_dimensionality": 18.826581954956055,
+      "max_eigenvalue": 12.44820785522461,
+      "num_eigenvalues": 50
+    },
+    "6": {
+      "checkpoint": "00121_00000.pth",
+      "effective_dimensionality": 26.019039154052734,
+      "max_eigenvalue": 32.432456970214844,
+      "num_eigenvalues": 50
+    },
+    "7": {
+      "checkpoint": "00141_00000.pth",
+      "effective_dimensionality": 27.20305633544922,
+      "max_eigenvalue": 35.075050354003906,
+      "num_eigenvalues": 50
+    },
+    "8": {
+      "checkpoint": "00161_00000.pth",
+      "effective_dimensionality": 27.125457763671875,
+      "max_eigenvalue": 32.983577728271484,
+      "num_eigenvalues": 50
+    },
+    "9": {
+      "checkpoint": "00181_00000.pth",
+      "effective_dimensionality": 27.466108322143555,
+      "max_eigenvalue": 37.816680908203125,
+      "num_eigenvalues": 50
+    }
+  }
+}

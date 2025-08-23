@@ -21,5 +21,6 @@ source activate devinterp_env
 # python AT_replication_single_model.py
 
 
-python AT_replication_complete.py --model ResNet18 --method Standard
+python AT_replication_complete.py --model ResNet18 --method Standard 
+
 

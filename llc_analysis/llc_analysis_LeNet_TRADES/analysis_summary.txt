@@ -1,0 +1,11 @@
+LLC Analysis Summary Report
+==================================================
+Analysis Date: 2025-08-20 00:22:45
+Results Directory: llc_analysis/llc_analysis_20250820_000041
+
+Total Experiments: 1
+
+Experiment: LeNet_TRADES_clean_vs_adv
+  - clean_vs_adv_comparison.json
+  - clean_vs_adversarial_llc.png
+

@@ -1,0 +1,25 @@
+LLC COMPARISON ANALYSIS SUMMARY
+==================================================
+
+Total Models Analyzed: 10
+Overall Mean LLC: 16.4623 ± 13.6112
+LLC Range: 0.0404 - 34.5922
+
+BY ROBUSTNESS CATEGORY:
+------------------------------
+Robust: 17.5761 ± 14.9063 (n=7)
+Vulnerable: 13.8635 ± 12.3542 (n=3)
+
+BY DEFENSE METHOD:
+------------------------------
+AT_AWP: 17.0816 ± 15.6596 (n=2)
+AT: 20.2559 ± 18.0106 (n=3)
+TRADES: 0.0451 ± nan (n=1)
+Standard: 13.8635 ± 12.3542 (n=3)
+MART: 28.0565 ± nan (n=1)
+
+BY MODEL ARCHITECTURE:
+------------------------------
+VGG11: 26.7072 ± 8.6995 (n=3)
+ResNet18: 21.0705 ± 10.1716 (n=4)
+LeNet: 0.0731 ± 0.0526 (n=3)

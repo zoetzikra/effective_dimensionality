@@ -144,7 +144,8 @@ class LLCAnalysisPipeline:
                                     checkpoint_pattern: str = "*.pth",
                                     max_checkpoints: Optional[int] = None,
                                     skip_calibration: bool = False,
-                                    calibration_path: Optional[str] = None) -> Dict:
+                                    calibration_path: Optional[str] = None,
+                                    data_split: str = "train") -> Dict:
         """
         Analyze LLC trajectory across model checkpoints.
         
@@ -157,6 +158,7 @@ class LLCAnalysisPipeline:
             max_checkpoints: Maximum number of checkpoints to analyze
             skip_calibration: Whether to skip hyperparameter calibration
             calibration_path: Path to pre-calibrated hyperparameters JSON file
+            data_split: Which data split to use for LLC evaluation ("train" or "test", default: "train")
             
         Returns:
             Dictionary with trajectory analysis results
@@ -164,6 +166,11 @@ class LLCAnalysisPipeline:
         print(f"\nAnalyzing LLC trajectory for {model_name} on {dataset_name}")
         print(f"Checkpoint directory: {checkpoint_dir}")
         print(f"Defense method: {defense_method}")
+        print(f"Data split for LLC evaluation: {data_split}")
+        
+        # Validate data_split parameter
+        if data_split not in ["train", "test"]:
+            raise ValueError(f"data_split must be 'train' or 'test', got: {data_split}")
         
         # Create experiment directory
         experiment_name = f"{model_name}_{dataset_name}_{defense_method}_trajectory"
@@ -185,8 +192,16 @@ class LLCAnalysisPipeline:
         
         print(f"Loaded {len(checkpoints)} checkpoints")
         
-        # Get data
+        # Get data loaders
         train_loader, test_loader = self._get_data_loaders(dataset_name)
+        
+        # Select appropriate data loader based on data_split parameter
+        if data_split == "train":
+            llc_data_loader = train_loader
+            print(f"Using TRAINING data for LLC evaluation (dataset size: {len(train_loader.dataset)})")
+        else:  # data_split == "test"
+            llc_data_loader = test_loader
+            print(f"Using TEST data for LLC evaluation (dataset size: {len(test_loader.dataset)})")
         
         # Handle hyperparameter calibration
         if skip_calibration and calibration_path:
@@ -210,7 +225,7 @@ class LLCAnalysisPipeline:
         
         trajectory_results = self.measurer.measure_llc_trajectory(
             model_checkpoints=checkpoints,
-            train_loader=train_loader,
+            train_loader=llc_data_loader,  # Use selected data loader (train or test)
             checkpoint_names=checkpoint_names,
             hyperparams=optimal_params,
             save_path=str(experiment_dir / "llc_results")
@@ -223,14 +238,16 @@ class LLCAnalysisPipeline:
             'defense_method': defense_method,
             'checkpoint_dir': checkpoint_dir,
             'num_checkpoints': len(checkpoints),
-            'optimal_params': optimal_params
+            'optimal_params': optimal_params,
+            'data_split': data_split,
+            'data_loader_size': len(llc_data_loader.dataset)
         })
         
         # Save results
         self._save_trajectory_results(trajectory_results, experiment_dir)
         
-        # Create trajectory visualization
-        self._create_trajectory_visualization(trajectory_results, experiment_dir)
+        # Note: Trajectory visualization is automatically created by LLCMeasurer.measure_llc_trajectory()
+        print(f"Trajectory visualization saved in: {experiment_dir}")
         
         return trajectory_results
     
@@ -282,7 +299,9 @@ class LLCAnalysisPipeline:
                                        max_checkpoints: Optional[int] = None,
                                        adversarial_attack: str = "pgd",
                                        adversarial_eps: float = 8/255,
-                                       adversarial_steps: int = 10) -> Dict:
+                                       adversarial_steps: int = 10,
+                                       resume_from_checkpoint: int = 0,
+                                       output_dir: str = None) -> Dict:
         """
         Compare LLC trajectories on clean vs adversarial data.
         
@@ -304,9 +323,17 @@ class LLCAnalysisPipeline:
         print(f"Model: {model_name}, Dataset: {dataset_name}, Defense: {defense_method}")
         print(f"Adversarial attack: {adversarial_attack}, ε={adversarial_eps}, steps={adversarial_steps}")
         
-        # Create experiment directory
-        experiment_name = f"{model_name}_{defense_method}_clean_vs_adv"
-        experiment_dir = self.results_dir / experiment_name
+        # Create or use existing experiment directory
+        if output_dir and resume_from_checkpoint > 0:
+            # Use specified output directory for resume
+            experiment_dir = Path(output_dir)
+            print(f"📁 Using existing experiment directory: {experiment_dir}")
+        else:
+            # Create new experiment directory
+            experiment_name = f"{model_name}_{defense_method}_clean_vs_adv"
+            experiment_dir = self.results_dir / experiment_name
+            print(f"📁 Creating new experiment directory: {experiment_dir}")
+        
         experiment_dir.mkdir(exist_ok=True)
         
         # Load checkpoints
@@ -349,22 +376,39 @@ class LLCAnalysisPipeline:
         adv_measurer = LLCMeasurer(adv_config)
         
         # Calibrate hyperparameters on final model (using clean data for consistency)
-        print("Calibrating hyperparameters on final model (clean data)...")
-        optimal_params = clean_measurer.calibrate_hyperparameters(
-            checkpoints[-1], train_loader, save_path=str(experiment_dir / "calibration")
-        )
+        calibration_results_path = experiment_dir / "calibration" / "calibration_results.json"
+        if calibration_results_path.exists() and resume_from_checkpoint > 0:
+            print("📂 Loading existing calibration results...")
+            with open(calibration_results_path, 'r') as f:
+                calibration_data = json.load(f)
+                # Extract just the optimal parameters (not the full calibration data)
+                optimal_params = calibration_data.get('optimal_params', calibration_data)
+            print("✅ Calibration results loaded from existing file")
+        else:
+            print("Calibrating hyperparameters on final model (clean data)...")
+            optimal_params = clean_measurer.calibrate_hyperparameters(
+                checkpoints[-1], train_loader, save_path=str(experiment_dir / "calibration")
+            )
         
         # Measure LLC trajectories
-        print("Measuring clean LLC trajectory...")
         checkpoint_names = [f"checkpoint_{i}" for i in range(len(checkpoints))]
         
-        clean_trajectory = clean_measurer.measure_llc_trajectory(
-            model_checkpoints=checkpoints,
-            train_loader=train_loader,
-            checkpoint_names=checkpoint_names,
-            hyperparams=optimal_params,
-            save_path=str(experiment_dir / "clean_llc_results")
-        )
+        # Check if clean trajectory is already complete
+        clean_trajectory_path = experiment_dir / "clean_llc_results" / "llc_trajectory.json"
+        if clean_trajectory_path.exists() and resume_from_checkpoint > 0:
+            print("📂 Loading existing clean LLC trajectory...")
+            with open(clean_trajectory_path, 'r') as f:
+                clean_trajectory = json.load(f)
+            print("✅ Clean trajectory loaded from existing results")
+        else:
+            print("Measuring clean LLC trajectory...")
+            clean_trajectory = clean_measurer.measure_llc_trajectory(
+                model_checkpoints=checkpoints,
+                train_loader=train_loader,
+                checkpoint_names=checkpoint_names,
+                hyperparams=optimal_params,
+                save_path=str(experiment_dir / "clean_llc_results")
+            )
         
         print("Measuring adversarial LLC trajectory...")
         adv_trajectory = adv_measurer.measure_llc_trajectory(
@@ -372,7 +416,8 @@ class LLCAnalysisPipeline:
             train_loader=train_loader,
             checkpoint_names=checkpoint_names,
             hyperparams=optimal_params,
-            save_path=str(experiment_dir / "adversarial_llc_results")
+            save_path=str(experiment_dir / "adversarial_llc_results"),
+            resume_from_checkpoint=resume_from_checkpoint
         )
         
         # Create comparison results
@@ -471,16 +516,13 @@ class LLCAnalysisPipeline:
                 # Try 'rmodel' first (your checkpoints have this)
                 if 'rmodel' in checkpoint:
                     rmodel = checkpoint['rmodel']
-                    print(f"  Found 'rmodel' of type: {type(rmodel)}")
                     
                     # If rmodel is a PyTorch module, get its state_dict
                     if hasattr(rmodel, 'state_dict'):
                         model_state = rmodel.state_dict()
-                        print(f"  Extracted rmodel state_dict")
                         model.load_state_dict(model_state)
                         loaded_successfully = True
                     elif isinstance(rmodel, dict):
-                        print(f"  rmodel is a dict")
                         
                         # Check if keys have 'model.' prefix and need stripping
                         model_keys = [k for k in rmodel.keys() if k.startswith('model.')]
@@ -491,7 +533,6 @@ class LLCAnalysisPipeline:
                                 if key.startswith('model.'):
                                     clean_key = key[6:]  # Remove 'model.' prefix
                                     cleaned_state_dict[clean_key] = value
-                            print(f"  Stripped 'model.' prefix")
                             model.load_state_dict(cleaned_state_dict)
                         else:
                             # Use as-is if no 'model.' prefix
@@ -686,57 +727,6 @@ class LLCAnalysisPipeline:
         
         print(f"Comparison results saved to: {results_path}")
     
-    def _create_trajectory_visualization(self, results: Dict, experiment_dir: Path):
-        """Create enhanced trajectory visualization"""
-        llc_means = results['llc_means']
-        llc_stds = results['llc_stds']
-        checkpoint_names = results['checkpoint_names']
-        
-        # Filter out None values
-        valid_indices = [i for i, mean in enumerate(llc_means) if mean is not None]
-        valid_means = [llc_means[i] for i in valid_indices]
-        valid_stds = [llc_stds[i] for i in valid_indices]
-        valid_names = [checkpoint_names[i] for i in valid_indices]
-        
-        if not valid_means:
-            print("No valid LLC measurements to plot")
-            return
-        
-        # Create enhanced plot
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 12))
-        
-        # Main LLC trajectory
-        x_positions = range(len(valid_means))
-        ax1.errorbar(x_positions, valid_means, yerr=valid_stds, 
-                    marker='o', capsize=5, capthick=2, linewidth=2, markersize=8)
-        
-        ax1.set_xlabel("Checkpoint")
-        ax1.set_ylabel("Local Learning Coefficient (LLC)")
-        ax1.set_title(f"LLC Trajectory - {results['model_name']} ({results['defense_method']})")
-        ax1.grid(True, alpha=0.3)
-        
-        # Add trend line
-        if len(valid_means) > 1:
-            z = np.polyfit(x_positions, valid_means, 1)
-            p = np.poly1d(z)
-            ax1.plot(x_positions, p(x_positions), "r--", alpha=0.8, label=f"Trend: {z[0]:.4f}x + {z[1]:.4f}")
-            ax1.legend()
-        
-        # LLC changes
-        if len(valid_means) > 1:
-            llc_changes = np.diff(valid_means)
-            ax2.plot(range(len(llc_changes)), llc_changes, marker='s', linewidth=2, markersize=6)
-            ax2.axhline(y=0, color='r', linestyle='--', alpha=0.5)
-            ax2.set_xlabel("Checkpoint")
-            ax2.set_ylabel("LLC Change")
-            ax2.set_title("LLC Changes Between Checkpoints")
-            ax2.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.savefig(experiment_dir / "llc_trajectory_enhanced.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        print(f"Enhanced trajectory plot saved to: {experiment_dir / 'llc_trajectory_enhanced.png'}")
     
     def _create_defense_comparison_plots(self, results: Dict, dataset_name: str):
         """Create comparison plots for different defense methods"""
@@ -802,32 +792,23 @@ class LLCAnalysisPipeline:
         valid_names = [checkpoint_names[i] for i in valid_indices]
         
         # Create comparison plot
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 12))
+        plt.figure(figsize=(12, 8))
         
         x_positions = range(len(valid_indices))
         
         # Main comparison plot
-        ax1.errorbar(x_positions, valid_clean_means, yerr=valid_clean_stds, 
+        plt.errorbar(x_positions, valid_clean_means, yerr=valid_clean_stds, 
                     marker='o', capsize=5, capthick=2, linewidth=2, markersize=8,
                     label='Clean Data', color='blue')
-        ax1.errorbar(x_positions, valid_adv_means, yerr=valid_adv_stds, 
+        plt.errorbar(x_positions, valid_adv_means, yerr=valid_adv_stds, 
                     marker='s', capsize=5, capthick=2, linewidth=2, markersize=8,
                     label='Adversarial Data', color='red')
         
-        ax1.set_xlabel("Checkpoint")
-        ax1.set_ylabel("Local Learning Coefficient (LLC)")
-        ax1.set_title(f"Clean vs Adversarial LLC - {results['model_name']} ({results['defense_method']})")
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Difference plot
-        llc_differences = [adv - clean for clean, adv in zip(valid_clean_means, valid_adv_means)]
-        ax2.plot(x_positions, llc_differences, marker='^', linewidth=2, markersize=8, color='green')
-        ax2.axhline(y=0, color='black', linestyle='--', alpha=0.5)
-        ax2.set_xlabel("Checkpoint")
-        ax2.set_ylabel("LLC Difference (Adversarial - Clean)")
-        ax2.set_title("LLC Difference Throughout Training")
-        ax2.grid(True, alpha=0.3)
+        plt.xlabel("Checkpoint")
+        plt.ylabel("Local Learning Coefficient (LLC)")
+        plt.title(f"Clean vs Adversarial LLC - {results['model_name']} ({results['defense_method']})")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
         
         plt.tight_layout()
         plt.savefig(experiment_dir / "clean_vs_adversarial_llc.png", dpi=300, bbox_inches='tight')
@@ -943,6 +924,125 @@ class LLCAnalysisPipeline:
         
         return results
     
+    def run_adversarial_only_trajectory(self, 
+                                      checkpoint_dir: str, 
+                                      model_name: str,
+                                      dataset_name: str = "Unknown",
+                                      defense_method: str = "Unknown",
+                                      calibration_path: str = None,
+                                      max_checkpoints: int = None,
+                                      output_dir: str = None,
+                                      resume_from_checkpoint: int = 0) -> Dict:
+        """
+        Run adversarial-only LLC trajectory analysis using pre-calibrated hyperparameters
+        
+        Args:
+            checkpoint_dir: Directory containing model checkpoints
+            model_name: Name of the model architecture
+            dataset_name: Name of the dataset
+            defense_method: Defense method used
+            calibration_path: Path to calibration results JSON file
+            max_checkpoints: Maximum number of checkpoints to analyze
+            output_dir: Custom output directory (if None, creates new experiment directory)
+            
+        Returns:
+            Dictionary containing analysis results
+        """
+        print(f"\n🎯 Running adversarial-only LLC trajectory analysis...")
+        print(f"Checkpoint dir: {checkpoint_dir}")
+        print(f"Model: {model_name}")
+        print(f"Dataset: {dataset_name}")
+        print(f"Calibration file: {calibration_path}")
+        
+        # Load pre-calibrated hyperparameters
+        if not calibration_path or not Path(calibration_path).exists():
+            raise FileNotFoundError(f"Calibration file not found: {calibration_path}")
+        
+        with open(calibration_path, 'r') as f:
+            calibration_data = json.load(f)
+        
+        # Extract optimal hyperparameters
+        if 'optimal_params' not in calibration_data:
+            raise ValueError("Calibration file must contain 'optimal_params' key")
+        
+        optimal_params = calibration_data['optimal_params']
+        print(f"📋 Loaded calibrated hyperparameters:")
+        print(f"  ε (epsilon): {optimal_params['epsilon']:.2e}")
+        print(f"  β (nbeta): {optimal_params['nbeta']:.4f}")
+        print(f"  γ (gamma): {optimal_params['gamma']:.2f}")
+        
+        # Update measurer config with calibrated params
+        self.measurer.config.epsilon = optimal_params['epsilon']
+        self.measurer.config.nbeta = optimal_params['nbeta'] 
+        self.measurer.config.gamma = optimal_params['gamma']
+        
+        # Enable adversarial mode
+        self.measurer.config.data_type = "adversarial"
+        
+        # Get data loaders
+        train_loader, test_loader = self._get_data_loaders(dataset_name)
+        
+        # Load checkpoints
+        checkpoints = self._load_checkpoints(checkpoint_dir, model_name, "*.pth")
+        
+        if not checkpoints:
+            raise ValueError(f"No checkpoints found in {checkpoint_dir}")
+        
+        # Limit number of checkpoints if specified (sample evenly like other methods)
+        if max_checkpoints and len(checkpoints) > max_checkpoints:
+            # Sample evenly across the trajectory
+            indices = np.linspace(0, len(checkpoints)-1, max_checkpoints, dtype=int)
+            checkpoints = [checkpoints[i] for i in indices]
+            print(f"Sampled {max_checkpoints} checkpoints from trajectory")
+        
+        print(f"📦 Found {len(checkpoints)} checkpoints to analyze")
+        
+        # Create or use specified output directory
+        if output_dir:
+            experiment_dir = Path(output_dir)
+            print(f"📁 Using custom output directory: {experiment_dir}")
+        else:
+            experiment_name = f"{model_name}_{dataset_name}_{defense_method}_adversarial_only"
+            experiment_dir = self.results_dir / experiment_name
+            print(f"📁 Creating new experiment directory: {experiment_dir}")
+        
+        experiment_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Run adversarial LLC measurement
+        print("Measuring adversarial LLC trajectory...")
+        checkpoint_names = [f"checkpoint_{i}" for i in range(len(checkpoints))]
+        
+        results = self.measurer.measure_llc_trajectory(
+            model_checkpoints=checkpoints,
+            train_loader=train_loader,
+            checkpoint_names=checkpoint_names,
+            hyperparams=optimal_params,
+            save_path=str(experiment_dir),  # Save directly to experiment_dir, not nested
+            resume_from_checkpoint=resume_from_checkpoint
+        )
+        
+        # Add metadata for plotting (following pattern from other methods)
+        if results:
+            results.update({
+                'model_name': model_name,
+                'dataset_name': dataset_name,
+                'defense_method': defense_method,
+                'checkpoint_dir': checkpoint_dir,
+                'num_checkpoints': len(checkpoints),
+                'adversarial_mode': True,
+                'calibration_params': optimal_params,
+                'analysis_type': 'adversarial_only_trajectory',
+                'calibration_source': calibration_path
+            })
+        
+        # Note: llc_trajectory.png is automatically created by measure_llc_trajectory
+        print("📊 Trajectory plot automatically saved as llc_trajectory.png")
+        
+        print(f"✅ Adversarial-only analysis complete!")
+        print(f"📁 Results saved to: {experiment_dir}")
+        
+        return results
+    
     def generate_summary_report(self) -> str:
         """Generate a summary report of all analyses"""
         report_path = self.results_dir / "analysis_summary.txt"
@@ -979,7 +1079,7 @@ class LLCAnalysisPipeline:
 def main():
     """Main function to run LLC analysis pipeline"""
     parser = argparse.ArgumentParser(description="LLC Analysis Pipeline for Pre-trained Models")
-    parser.add_argument("--mode", choices=["single", "trajectory", "compare", "clean_vs_adv", "calibration"], required=True,
+    parser.add_argument("--mode", choices=["single", "trajectory", "compare", "clean_vs_adv", "calibration", "adversarial_only"], required=True,
                        help="Analysis mode")
     parser.add_argument("--model_path", type=str, help="Path to model checkpoint")
     parser.add_argument("--checkpoint_dir", type=str, help="Directory containing checkpoints")
@@ -1003,6 +1103,10 @@ def main():
                        help="Path to pre-calibrated hyperparameters JSON file")
     parser.add_argument("--max_checkpoints", type=int, default=None,
                        help="Maximum number of checkpoints to analyze (default: all)")
+    parser.add_argument("--output_dir", type=str,
+                       help="Custom output directory for results (used with adversarial_only mode)")
+    parser.add_argument("--resume_from_checkpoint", type=int, default=0,
+                       help="Resume analysis from specific checkpoint index (0-based, default: 0)")
     
     args = parser.parse_args()
     
@@ -1080,7 +1184,9 @@ def main():
             max_checkpoints=args.max_checkpoints,
             adversarial_attack=args.adversarial_attack,
             adversarial_eps=args.adversarial_eps,
-            adversarial_steps=args.adversarial_steps
+            adversarial_steps=args.adversarial_steps,
+            resume_from_checkpoint=args.resume_from_checkpoint,
+            output_dir=args.output_dir
         )
     
     elif args.mode == "calibration":
@@ -1092,6 +1198,23 @@ def main():
             model_name=args.model_name,
             dataset_name=args.dataset,
             defense_method=args.defense_method
+        )
+    
+    elif args.mode == "adversarial_only":
+        if not args.checkpoint_dir:
+            raise ValueError("--checkpoint_dir is required for adversarial_only mode")
+        if not args.calibration_path:
+            raise ValueError("--calibration_path is required for adversarial_only mode")
+        
+        pipeline.run_adversarial_only_trajectory(
+            checkpoint_dir=args.checkpoint_dir,
+            model_name=args.model_name,
+            dataset_name=args.dataset,
+            defense_method=args.defense_method,
+            calibration_path=args.calibration_path,
+            max_checkpoints=args.max_checkpoints,
+            output_dir=args.output_dir,
+            resume_from_checkpoint=args.resume_from_checkpoint
         )
     
     # Generate summary report

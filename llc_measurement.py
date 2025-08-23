@@ -11,7 +11,7 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
@@ -29,6 +29,7 @@ from devinterp.utils import (
     get_init_loss_multi_batch
 )
 from devinterp.vis_utils import EpsilonBetaAnalyzer
+
 
 warnings.filterwarnings("ignore")
 
@@ -223,9 +224,8 @@ class LLCMeasurer:
                 model._device_warning_printed = True
             model = model.to(target_device)
         
-        # Apply adversarial perturbation if configured
-        if self.config.data_type in ["adversarial", "mixed"]:
-            inputs = self._generate_adversarial_data(model, inputs, targets)
+        # Note: Adversarial examples are now pre-generated in the DataLoader
+        # No on-the-fly generation needed here
         
         # Remove torch.no_grad() - we need gradients for LLC estimation!
         outputs = model(inputs)
@@ -259,64 +259,123 @@ class LLCMeasurer:
             raise ValueError(f"Unsupported attack type: {self.config.adversarial_attack}")
     
     def _pgd_attack(self, model: nn.Module, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """PGD attack implementation"""
-        inputs_adv = inputs.clone().detach().requires_grad_(True)
-        
-        # Zero out any existing gradients on model parameters to avoid interference
+        """PGD attack implementation with proper gradient isolation"""
+        # Clear any existing gradients
         model.zero_grad()
         
-        for step in range(self.config.adversarial_steps):
-            # Zero out any existing gradients on inputs
-            if inputs_adv.grad is not None:
-                inputs_adv.grad.zero_()
-            
-            outputs = model(inputs_adv)
-            loss = nn.CrossEntropyLoss()(outputs, targets)
-            
-            # Compute gradients w.r.t. inputs only
-            grad_outputs = torch.autograd.grad(
-                outputs=loss,
-                inputs=inputs_adv,
-                create_graph=False,
-                retain_graph=False,
-                only_inputs=True
-            )[0]
-            
-            with torch.no_grad():
-                grad_sign = grad_outputs.sign()
-                inputs_adv = inputs_adv + self.config.adversarial_eps / self.config.adversarial_steps * grad_sign
-                inputs_adv = torch.clamp(inputs_adv, 0, 1)
+        inputs_adv = inputs.clone().detach().requires_grad_(True)
+        
+        # Disable gradients for model parameters during adversarial generation
+        for param in model.parameters():
+            param.requires_grad_(False)
+        
+        try:
+            for step in range(self.config.adversarial_steps):
+                # Clear all gradients
+                model.zero_grad()
+                if inputs_adv.grad is not None:
+                    inputs_adv.grad.zero_()
                 
-                # Detach and re-enable gradients for next iteration
-                inputs_adv = inputs_adv.detach().requires_grad_(True)
+                outputs = model(inputs_adv)
+                loss = nn.CrossEntropyLoss()(outputs, targets)
+                
+                # Backward pass to compute gradients
+                loss.backward()
+                
+                with torch.no_grad():
+                    grad_sign = inputs_adv.grad.sign()
+                    inputs_adv = inputs_adv + self.config.adversarial_eps / self.config.adversarial_steps * grad_sign
+                    inputs_adv = torch.clamp(inputs_adv, 0, 1)
+                    
+                    # Detach and re-enable gradients for next iteration
+                    inputs_adv = inputs_adv.detach().requires_grad_(True)
+        finally:
+            # Re-enable gradients for model parameters after adversarial generation
+            for param in model.parameters():
+                param.requires_grad_(True)
+            # Clear gradients again
+            model.zero_grad()
         
         return inputs_adv.detach()
     
     def _fgsm_attack(self, model: nn.Module, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """FGSM attack implementation"""
-        inputs_adv = inputs.clone().detach().requires_grad_(True)
-        
-        # Zero out any existing gradients on model parameters to avoid interference
+        """FGSM attack implementation with proper gradient isolation"""
+        # Clear any existing gradients
         model.zero_grad()
         
-        outputs = model(inputs_adv)
-        loss = nn.CrossEntropyLoss()(outputs, targets)
+        inputs_adv = inputs.clone().detach().requires_grad_(True)
         
-        # Compute gradients w.r.t. inputs only
-        grad_outputs = torch.autograd.grad(
-            outputs=loss,
-            inputs=inputs_adv,
-            create_graph=False,
-            retain_graph=False,
-            only_inputs=True
-        )[0]
+        # Disable gradients for model parameters during adversarial generation
+        for param in model.parameters():
+            param.requires_grad_(False)
         
-        with torch.no_grad():
-            grad_sign = grad_outputs.sign()
-            inputs_adv = inputs_adv + self.config.adversarial_eps * grad_sign
-            inputs_adv = torch.clamp(inputs_adv, 0, 1)
+        try:
+            outputs = model(inputs_adv)
+            loss = nn.CrossEntropyLoss()(outputs, targets)
+            
+            # Backward pass to compute gradients
+            loss.backward()
+            
+            with torch.no_grad():
+                grad_sign = inputs_adv.grad.sign()
+                inputs_adv = inputs_adv + self.config.adversarial_eps * grad_sign
+                inputs_adv = torch.clamp(inputs_adv, 0, 1)
+        finally:
+            # Re-enable gradients for model parameters after adversarial generation
+            for param in model.parameters():
+                param.requires_grad_(True)
+            # Clear gradients again
+            model.zero_grad()
         
         return inputs_adv.detach()
+    
+    def create_adversarial_dataloader(self, model: nn.Module, dataloader: DataLoader) -> DataLoader:
+        """
+        Create a new DataLoader with adversarial examples pre-generated from the original DataLoader
+        
+        Args:
+            model: The model to generate adversarial examples against
+            dataloader: Original clean DataLoader
+            
+        Returns:
+            New DataLoader with adversarial examples
+        """
+        print("🔥 Pre-generating adversarial examples...")
+        model.eval()
+        
+        # Ensure model is on the correct device
+        model = model.to(self.device)
+        
+        adversarial_data = []
+        total_batches = len(dataloader)
+        
+        for batch_idx, (inputs, targets) in enumerate(dataloader):
+            if batch_idx % max(1, total_batches // 10) == 0:
+                print(f"  Processing batch {batch_idx + 1}/{total_batches}")
+            
+            inputs, targets = inputs.to(self.device), targets.to(self.device)
+            
+            # Generate adversarial examples for this batch
+            adv_inputs = self._generate_adversarial_data(model, inputs, targets)
+            
+            # Store adversarial examples (move to CPU to save GPU memory)
+            adversarial_data.append((adv_inputs.cpu(), targets.cpu()))
+        
+        print(f"✅ Generated adversarial examples for {len(adversarial_data)} batches")
+                
+        # Concatenate all batches
+        all_adv_inputs = torch.cat([batch[0] for batch in adversarial_data], dim=0)
+        all_targets = torch.cat([batch[1] for batch in adversarial_data], dim=0)
+        
+        adversarial_dataset = TensorDataset(all_adv_inputs, all_targets)
+        adversarial_dataloader = DataLoader(
+            adversarial_dataset, 
+            batch_size=dataloader.batch_size,
+            shuffle=False,  # Keep same order for consistency
+            num_workers=0  # Avoid multiprocessing issues with pre-generated data
+        )
+        
+        return adversarial_dataloader
     
     def calibrate_hyperparameters(self, 
                                 model: nn.Module, 
@@ -385,8 +444,8 @@ class LLCMeasurer:
                 
                 # Use same parameters as calibration for consistency
                 self.config.num_chains = 3
-                self.config.num_steps = 300 #500  # 50 draws + 450 burn-in
-                self.config.num_burnin_steps = 270 #450
+                self.config.num_steps = 500 #300  # 50 draws + 450 burn-in
+                self.config.num_burnin_steps = 450 #270 
                 
                 print(f"Using calibration-consistent parameters: {self.config.num_chains} chains, {self.config.get_effective_draws()} draws")
                 
@@ -917,7 +976,8 @@ class LLCMeasurer:
                              train_loader: DataLoader,
                              checkpoint_names: Optional[List[str]] = None,
                              hyperparams: Optional[Dict[str, float]] = None,
-                             save_path: Optional[str] = None) -> Dict[str, List[float]]:
+                             save_path: Optional[str] = None,
+                             resume_from_checkpoint: int = 0) -> Dict[str, List[float]]:
         """
         Measure LLC across multiple model checkpoints.
         
@@ -927,6 +987,7 @@ class LLCMeasurer:
             checkpoint_names: Optional names for checkpoints
             hyperparams: Optional hyperparameters
             save_path: Path to save results
+            resume_from_checkpoint: Index to resume from (default: 0)
             
         Returns:
             Dictionary with LLC trajectory data
@@ -940,18 +1001,49 @@ class LLCMeasurer:
         
         print(f"Measuring LLC trajectory across {len(model_checkpoints)} checkpoints...")
         
+        # Pre-generate adversarial DataLoader if needed
+        if self.config.data_type == "adversarial":
+            print("🔥 Adversarial mode detected - pre-generating adversarial examples...")
+            # Use the first model checkpoint for adversarial generation
+            # (This is reasonable since we want to see how LLC changes with adversarial examples)
+            reference_model = model_checkpoints[0]
+            train_loader = self.create_adversarial_dataloader(reference_model, train_loader)
+            print("✅ Using adversarial DataLoader for all checkpoints")
+        
         llc_means = []
         llc_stds = []
         mala_rates = []
         
+        # Initialize lists with None values if resuming
+        if resume_from_checkpoint > 0:
+            print(f"🔄 Resuming from checkpoint {resume_from_checkpoint}")
+            llc_means = [None] * len(model_checkpoints)
+            llc_stds = [None] * len(model_checkpoints)
+            mala_rates = [None] * len(model_checkpoints)
+            
+            # Load existing results if available
+            if save_path:
+                for i in range(resume_from_checkpoint):
+                    checkpoint_path = os.path.join(save_path, f"{checkpoint_names[i]}_llc_results.json")
+                    if os.path.exists(checkpoint_path):
+                        with open(checkpoint_path, 'r') as f:
+                            existing_results = json.load(f)
+                            llc_means[i] = existing_results.get('llc_mean')
+                            llc_stds[i] = existing_results.get('llc_std')
+                            mala_rates[i] = existing_results.get('mala_acceptance')
+                        print(f"📂 Loaded existing results for {checkpoint_names[i]}")
+                    else:
+                        print(f"⚠️  No existing results found for {checkpoint_names[i]}")
+        
         for i, (model, name) in enumerate(zip(model_checkpoints, checkpoint_names)):
+            # Skip checkpoints before resume point
+            if i < resume_from_checkpoint:
+                print(f"⏭️  Skipping checkpoint {i+1}/{len(model_checkpoints)}: {name} (already completed)")
+                continue
+                
             print(f"Processing checkpoint {i+1}/{len(model_checkpoints)}: {name}")
             
             try:
-                # Add some debugging information
-                print(f"  Model device: {next(model.parameters()).device}")
-                print(f"  Model parameters: {sum(p.numel() for p in model.parameters()):,}")
-                
                 results = self.estimate_llc(model, train_loader, hyperparams)
                 
                 # Debug: Check what keys are in results
@@ -962,14 +1054,24 @@ class LLCMeasurer:
                     print(f"  Results content: {results}")
                     raise KeyError(f"'llc/mean' not found in LLC results for {name}")
                 
-                llc_means.append(results["llc/mean"])
-                llc_stds.append(results["llc/std"])
+                if resume_from_checkpoint > 0:
+                    llc_means[i] = results["llc/mean"]
+                    llc_stds[i] = results["llc/std"]
+                else:
+                    llc_means.append(results["llc/mean"])
+                    llc_stds.append(results["llc/std"])
                 
                 # Extract MALA acceptance rate if available
                 if "mala_accept/mean" in results:
-                    mala_rates.append(results["mala_accept/mean"])
+                    if resume_from_checkpoint > 0:
+                        mala_rates[i] = results["mala_accept/mean"]
+                    else:
+                        mala_rates.append(results["mala_accept/mean"])
                 else:
-                    mala_rates.append(None)
+                    if resume_from_checkpoint > 0:
+                        mala_rates[i] = None
+                    else:
+                        mala_rates.append(None)
                 
                 # Save individual checkpoint results
                 if save_path:

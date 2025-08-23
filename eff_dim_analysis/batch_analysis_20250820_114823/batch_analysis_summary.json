@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-08-20T20:13:40.057695",
+  "models_analyzed": [
+    "LeNet",
+    "ResNet18",
+    "VGG11"
+  ],
+  "results_paths": {
+    "LeNet": "/home/ztzifa/effective_dimensionality/eff_dim_analysis/batch_analysis_20250820_114823/LeNet_analysis",
+    "ResNet18": "/home/ztzifa/effective_dimensionality/eff_dim_analysis/batch_analysis_20250820_114823/ResNet18_analysis",
+    "VGG11": "/home/ztzifa/effective_dimensionality/eff_dim_analysis/batch_analysis_20250820_114823/VGG11_analysis"
+  }
+}

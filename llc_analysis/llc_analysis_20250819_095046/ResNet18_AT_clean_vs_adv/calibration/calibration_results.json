@@ -1,0 +1,25 @@
+{
+  "optimal_params": {
+    "epsilon": 1e-06,
+    "gamma": 1.0,
+    "nbeta": 0.8207331788168325,
+    "llc_mean": 28.185897827148438,
+    "llc_std": 3.137362003326416,
+    "llc_std_over_mean": 0.13722267746925354,
+    "beta_source": "tuned",
+    "gamma_source": "fixed_config",
+    "mala_acceptance": 0.6086564064025879
+  },
+  "calibration_epsilons": [
+    1e-06,
+    1e-05,
+    0.0001,
+    0.001
+  ],
+  "calibration_gammas": [
+    1.0,
+    10.0,
+    100.0,
+    200.0
+  ]
+}

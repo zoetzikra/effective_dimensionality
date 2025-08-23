@@ -1,0 +1,90 @@
+#!/bin/bash
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
+#SBATCH --job-name=adversarial_grokking_ffcv
+#SBATCH --output=RunMethod_%A_h100_test_LLC_clean_vs_adv_ResNet18_MART.out
+#SBATCH --time=12:00:00
+#SBATCH --mem=40G
+#SBATCH --hint=nomultithread
+
+echo "✅ Job started at: $(date)"
+
+# Load modules
+module purge
+module load 2023
+module load Anaconda3/2023.07-2
+module load CUDA/12.1.1
+
+source activate devinterp_env
+
+
+# python inspect_checkpoint.py ./models/LeNet_Standard/epoch_iter/00001_00000.pth
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method Standard 
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/LeNet_AT/epoch_iter \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method AT 
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/LeNet_TRADES/epoch_iter \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method TRADES \
+#     --max_checkpoints 10
+
+
+
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/ResNet18_Standard/epoch_iter \
+#     --model_name ResNet18 \
+#     --dataset CIFAR10 \
+#     --defense_method Standard \
+#     --max_checkpoints 20
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/ResNet18_AT_AWP/epoch_iter \
+#     --model_name ResNet18 \
+#     --dataset CIFAR10 \
+#     --defense_method AT_AWP \
+#     --max_checkpoints 20
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/ResNet18_MART/epoch_iter \
+#     --model_name ResNet18 \
+#     --dataset CIFAR10 \
+#     --defense_method MART \
+#     --max_checkpoints 20
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/ResNet18_AT/epoch_iter \
+#     --model_name ResNet18 \
+#     --dataset CIFAR10 \
+#     --defense_method AT \
+#     --max_checkpoints 20
+
+# python llc_analysis_pipeline.py --mode clean_vs_adv \
+#     --checkpoint_dir ./models/ResNet18_AT/epoch_iter \
+#     --model_name ResNet18 \
+#     --dataset CIFAR10 \
+#     --defense_method AT \
+#     --max_checkpoints 20 \
+#     --resume_from_checkpoint 10 \
+#     --output_dir ./llc_analysis/llc_analysis_20250819_162146/ResNet18_AT_clean_vs_adv
+
+python llc_analysis_pipeline.py --mode clean_vs_adv \
+    --checkpoint_dir ./models/ResNet18_AT_AWP/epoch_iter \
+    --model_name ResNet18 \
+    --dataset CIFAR10 \
+    --defense_method AT_AWP \
+    --max_checkpoints 20 \
+    --resume_from_checkpoint 16 \
+    --output_dir ./llc_analysis/llc_analysis_20250819_235952/ResNet18_AT_AWP_clean_vs_adv

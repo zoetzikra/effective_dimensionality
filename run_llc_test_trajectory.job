@@ -1,0 +1,87 @@
+#!/bin/bash
+#SBATCH --partition=gpu_h100
+#SBATCH --gpus=1
+#SBATCH --cpus-per-task=8
+#SBATCH --job-name=LLC_test_trajectory
+#SBATCH --output=RunMethod_%A_h100_test_LLC_test_trajectory_LeNet_AT.out
+#SBATCH --time=12:00:00
+#SBATCH --mem=40G
+#SBATCH --hint=nomultithread
+
+echo "✅ Job started at: $(date)"
+
+# Load modules
+module purge
+module load 2023
+module load Anaconda3/2023.07-2
+module load CUDA/12.1.1
+
+source activate devinterp_env
+
+
+# # Step 1: Generate clean trajectory
+# python comprehensive_model_evaluation.py \
+#     --mode clean-test-llc \
+#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter/ \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method Standard \
+#     --max_checkpoints 30 \
+#     --calibration_path ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/calibration/calibration_results.json \
+#     --skip_calibration \
+#     --output_dir ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/clean_results/
+
+
+# # Step 2: Generate adversarial trajectory  
+# python comprehensive_model_evaluation.py \
+#     --mode adv-data-llc \
+#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter/ \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method Standard \
+#     --max_checkpoints 30 \
+#     --calibration_path ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/calibration/calibration_results.json \
+#     --skip_calibration \
+#     --output_dir ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/adversarial_results/
+
+
+# Step 3: Plot comparison
+# python comprehensive_model_evaluation.py \
+#     --mode plot-compare-trajectories \
+#     --model_path ./models/LeNet_Standard/best.pth \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --defense_method Standard \
+#     --clean_trajectory_path /home/ztzifa/effective_dimensionality/llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/clean_results/clean_test_llc_trajectory.json \
+#     --adv_trajectory_path /home/ztzifa/effective_dimensionality/llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/adversarial_results/adversarial_test_llc_trajectory.json \
+#     --save_name LeNet_MNIST_Standard_test_trajectory
+
+
+# python compare_final_llc_values.py
+
+
+# Step 1: Generate clean trajectory
+python comprehensive_model_evaluation.py \
+    --mode clean-test-llc \
+    --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method AT \
+    --max_checkpoints 30 \
+    --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
+    --skip_calibration \
+    --output_dir ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/test_trajectory_data/clean_results/
+
+
+# Step 2: Generate adversarial trajectory  
+python comprehensive_model_evaluation.py \
+    --mode adv-data-llc \
+    --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method AT \
+    --max_checkpoints 30 \
+    --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
+    --skip_calibration \
+    --output_dir ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/test_trajectory_data/adversarial_results/
+
