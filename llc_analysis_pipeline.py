@@ -91,11 +91,24 @@ class LLCAnalysisPipeline:
         
         # Handle hyperparameter calibration
         optimal_params = None
-        if skip_calibration and calibration_path:
-            print("Loading pre-calibrated hyperparameters...")
-            optimal_params = self.measurer.load_calibrated_hyperparameters(calibration_path)
+        if skip_calibration:
+            print("⏭️  Skipping calibration as requested...")
+            if calibration_path:
+                print(f"Loading pre-calibrated hyperparameters from: {calibration_path}")
+                optimal_params = self.measurer.load_calibrated_hyperparameters(calibration_path)
+                if optimal_params is None:
+                    print("❌ Failed to load pre-calibrated parameters, falling back to calibration...")
+                else:
+                    print(f"✅ Using calibrated parameters: {optimal_params}")
+            
+            # Check if we have optimal_params from pipeline attribute
+            if optimal_params is None and hasattr(self, 'optimal_hyperparams'):
+                print("Using optimal hyperparameters from pipeline...")
+                optimal_params = self.optimal_hyperparams
+                
+            # If we still don't have parameters, we must calibrate
             if optimal_params is None:
-                print("Failed to load pre-calibrated parameters, falling back to calibration...")
+                print("⚠️  No pre-calibrated parameters available, running calibration...")
                 optimal_params = self.measurer.calibrate_hyperparameters(
                     model, train_loader, save_path=str(experiment_dir / "calibration")
                 )
@@ -204,11 +217,28 @@ class LLCAnalysisPipeline:
             print(f"Using TEST data for LLC evaluation (dataset size: {len(test_loader.dataset)})")
         
         # Handle hyperparameter calibration
-        if skip_calibration and calibration_path:
-            print("Loading pre-calibrated hyperparameters...")
-            optimal_params = self.measurer.load_calibrated_hyperparameters(calibration_path)
+        optimal_params = None
+        if skip_calibration:
+            print("⏭️  Skipping calibration as requested...")
+            if calibration_path:
+                print(f"📁 Calibration path provided: {calibration_path}")
+                print(f"📁 Calibration path exists: {Path(calibration_path).exists()}")
+                optimal_params = self.measurer.load_calibrated_hyperparameters(calibration_path)
+                if optimal_params is None:
+                    print("❌ Failed to load pre-calibrated parameters, falling back to calibration...")
+                else:
+                    print(f"✅ Successfully loaded calibrated parameters: {optimal_params}")
+            else:
+                print("❌ No calibration_path provided!")
+            
+            # Check if we have optimal_params from either loading or pipeline attribute
+            if optimal_params is None and hasattr(self, 'optimal_hyperparams'):
+                print("Using optimal hyperparameters from pipeline...")
+                optimal_params = self.optimal_hyperparams
+                
+            # If we still don't have parameters, we must calibrate
             if optimal_params is None:
-                print("Failed to load pre-calibrated parameters, falling back to calibration...")
+                print("⚠️  No pre-calibrated parameters available, running calibration...")
                 optimal_params = self.measurer.calibrate_hyperparameters(
                     checkpoints[-1], train_loader, save_path=str(experiment_dir / "calibration")
                 )

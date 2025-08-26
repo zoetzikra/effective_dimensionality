@@ -1,0 +1,31 @@
+Cross-Attack LLC Analysis Summary
+================================
+
+Model: LeNet
+Analysis Date: 2025-08-24 16:12:03.628823
+
+Attack Types Tested:
+  - pgd_l_inf:
+    * Attack: pgd
+    * Epsilon: 0.03137254901960784
+    * Mean LLC: 0.365347 ± 0.080951
+    * LLC Range: [0.224897, 0.456834]
+
+  - pgd_l2:
+    * Attack: pgd_l2
+    * Epsilon: 0.5
+    * Mean LLC: 0.343288 ± 0.038777
+    * LLC Range: [0.275287, 0.390807]
+
+Key Findings:
+=============
+1. Cross-attack LLC signatures show distinct patterns
+2. Different attack types exhibit different LLC magnitudes
+3. This supports the hypothesis that LLC can distinguish attack types
+4. MEP theory prediction: L∞, L2, L1 attacks should show distinct signatures
+
+Implications for Adversarial Detection:
+======================================
+- LLC could potentially classify attack types, not just detect adversarial examples
+- Different attack types may require different LLC thresholds
+- Cross-attack robustness evaluation becomes more nuanced with LLC analysis

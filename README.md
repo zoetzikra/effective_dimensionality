@@ -1,228 +1,405 @@
-# Local Learning Coefficient (LLC) Measurement Pipeline
+# Effective Dimensionality & Local Learning Coefficient Analysis for Adversarial Training
 
-A comprehensive pipeline for measuring Local Learning Coefficients (LLC) in adversarial training models using the devinterp library and MAIR framework.
+A comprehensive research framework for analyzing model complexity and learning dynamics in adversarial training through **Local Learning Coefficients (LLC)** and **Effective Dimensionality** measurements.
 
-## Overview
+## 🎯 Overview
 
-This pipeline provides tools for:
-- **Hyperparameter calibration** for SGLD sampling
-- **LLC estimation** for individual models and checkpoint trajectories
-- **Diagnostic monitoring** with MALA acceptance rates and stability metrics
-- **Clean vs adversarial data comparison** for LLC analysis
-- **Defense method comparison** across different training approaches
+This project provides a complete pipeline for understanding how adversarial training affects model complexity through two complementary measures:
 
-## Features
+1. **Local Learning Coefficient (LLC)** - A singularity-aware complexity measure using SGLD sampling
+2. **Effective Dimensionality** - Hessian eigenvalue-based complexity analysis via Lanczos iteration
 
-### 🔧 Advanced Hyperparameter Calibration
-- Grid search over epsilon (step size) and beta (inverse temperature)
-- Stability-based parameter selection
-- Automatic detection of failure modes (negative LLC values)
-- Comprehensive diagnostic reporting
+### Key Capabilities
 
-### 📊 Comprehensive Diagnostics
-- MALA acceptance rate monitoring
-- LLC stability analysis
-- Convergence checking
-- Failure mode detection and recommendations
+- **🛡️ Adversarial Training Pipeline** - Complete MAIR-based training with multiple defense methods
+- **📊 LLC Measurement** - Advanced hyperparameter calibration and trajectory analysis
+- **🔍 Effective Dimensionality Analysis** - Hessian eigenvalue computation and complexity tracking
+- **⚔️ Cross-Attack Analysis** - Compare LLC signatures across different attack types (L∞, L2, L1)
+- **🔬 Comprehensive Evaluation** - Clean vs adversarial data comparison
+- **📈 Rich Visualizations** - Training dynamics, complexity evolution, and comparative plots
+- **🚀 HPC Integration** - SLURM job scripts for large-scale experiments
 
-### 🛡️ Adversarial Data Support
-- LLC measurement on clean, adversarial, and mixed data
-- PGD and FGSM attack integration
-- Clean vs adversarial LLC trajectory comparison
+## 🏗️ Project Structure
 
-### ⚡ Performance Optimizations
-- Skip calibration using pre-calibrated hyperparameters
-- Configurable checkpoint sampling for large trajectories
-- Efficient batch processing
-
-## Installation
-
-```bash
-pip install -r requirements.txt
+```
+effective_dimensionality/
+├── 🧠 Core Analysis
+│   ├── llc_measurement.py              # LLC measurement with advanced calibration
+│   ├── llc_analysis_pipeline.py        # Comprehensive LLC analysis pipeline
+│   ├── effective_dimensionality_analysis.py # Hessian-based complexity analysis
+│   ├── cross_attack_llc_analysis.py    # Cross-attack LLC signature analysis
+│   └── comprehensive_model_evaluation.py # Unified evaluation framework
+│
+├── 🛡️ Adversarial Training
+│   ├── AT_replication_complete.py      # Complete adversarial training pipeline
+│   ├── AT_replication_single_model.py  # Single model training
+│   ├── mair_compatible_checkpoint_trainer.py # MAIR checkpoint integration
+│   └── MAIR/                           # MAIR adversarial training framework
+│
+├── 📊 Visualization & Analysis
+│   ├── generate_comparison_plots.py    # Training dynamics visualization
+│   ├── create_cross_attack_plot.py     # Cross-attack analysis plots
+│   ├── compare_final_llc_values.py     # Final LLC comparison
+│   └── fix_multi_epsilon_plot.py       # Multi-epsilon analysis plots
+│
+├── 🔧 Utilities & Support
+│   ├── hess_vec_prod.py                # Hessian-vector products
+│   ├── utils.py                        # General utilities
+│   ├── model.py                        # Model definitions
+│   └── inspect_checkpoint.py           # Checkpoint inspection
+│
+├── 💼 Job Scripts & Workflows
+│   ├── run_*.job                       # SLURM job scripts
+│   ├── training_jobs/                  # Training job scripts
+│   └── RunMethod_*.out                 # Job outputs and logs
+│
+├── 📁 Data & Results
+│   ├── models/                         # Trained model checkpoints
+│   ├── llc_analysis/                   # LLC analysis results
+│   ├── eff_dim_analysis/              # Effective dimensionality results
+│   ├── comprehensive_evaluation/       # Evaluation results
+│   └── data/                          # Dataset cache
+│
+└── 📚 Documentation
+    ├── README.md                       # This file
+    ├── README_LLC.md                   # Detailed LLC documentation
+    ├── CONFIGURATION_IMPROVEMENTS.md   # Configuration guide
+    └── requirements_llc.txt            # Python dependencies
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Basic LLC Measurement
+### 1. Installation
 
 ```bash
-# Measure LLC for a single model
+# Clone the repository
+git clone <repository_url>
+cd effective_dimensionality
+
+# Install dependencies
+pip install -r requirements_llc.txt
+
+# Install MAIR framework
+cd MAIR
+pip install -e .
+cd ..
+
+# Install devinterp for LLC measurement
+pip install devinterp
+```
+
+### 2. Train Models
+
+```bash
+# Train a single model with adversarial training
+python AT_replication_complete.py --model ResNet18 --method AT
+
+# Train with Adversarial Weight Perturbation (AWP)
+python AT_replication_complete.py --model ResNet18 --method AT --awp
+
+# Run complete experiment suite
+python AT_replication_complete.py --full-suite
+```
+
+### 3. Analyze LLC Trajectories
+
+```bash
+# Single model LLC analysis
 python llc_analysis_pipeline.py --mode single \
-    --model_path /path/to/model.pth \
+    --model_path ./models/ResNet18_AT/best.pth \
     --model_name ResNet18 \
     --dataset CIFAR10 \
-    --defense_method PGD
-```
+    --defense_method AT
 
-### 2. LLC Trajectory Analysis
-
-```bash
-# Analyze LLC across training checkpoints
+# Trajectory analysis across training checkpoints
 python llc_analysis_pipeline.py --mode trajectory \
-    --checkpoint_dir /path/to/checkpoints/ \
+    --checkpoint_dir ./models/ResNet18_AT/epoch_iter/ \
     --model_name ResNet18 \
     --dataset CIFAR10 \
-    --defense_method PGD
+    --defense_method AT
 ```
 
-### 3. Skip Calibration (Use Pre-calibrated Parameters)
+### 4. Effective Dimensionality Analysis
 
 ```bash
-# Use previously calibrated hyperparameters to save time
+# Single model effective dimensionality
+python effective_dimensionality_analysis.py --model ResNet18 --defense AT
+
+# Compare multiple defense methods
+python effective_dimensionality_analysis.py --compare --model ResNet18
+
+# Batch analyze all models
+python effective_dimensionality_analysis.py --batch
+```
+
+### 5. Cross-Attack Analysis
+
+```bash
+# Analyze LLC signatures across different attack types
+python cross_attack_llc_analysis.py \
+    --model_path ./models/LeNet_AT/best.pth \
+    --model_name LeNet \
+    --dataset MNIST \
+    --calibration_path ./calibration_results.json \
+    --checkpoint_dir ./models/LeNet_AT/epoch_iter/
+```
+
+## 🛡️ Supported Defense Methods
+
+| Method | Description | Architectures | Datasets |
+|--------|-------------|---------------|----------|
+| **Standard** | Standard training (no adversarial) | LeNet, VGG11, ResNet18 | MNIST, CIFAR10 |
+| **AT** | Adversarial Training (Madry et al.) | LeNet, VGG11, ResNet18 | MNIST, CIFAR10 |
+| **TRADES** | Trade-off between Robustness and Accuracy | LeNet, VGG11, ResNet18 | MNIST, CIFAR10 |
+| **MART** | Misclassification Aware adveRsarial Training | ResNet18 | CIFAR10 |
+| **AT + AWP** | AT with Adversarial Weight Perturbation | VGG11, ResNet18 | CIFAR10 |
+| **TRADES + AWP** | TRADES with AWP | ResNet18 | CIFAR10 |
+
+## 📊 Analysis Capabilities
+
+### Local Learning Coefficient (LLC)
+- **Advanced Hyperparameter Calibration** - Stability-based parameter selection
+- **Trajectory Analysis** - Track complexity evolution during training
+- **Clean vs Adversarial Comparison** - LLC on different data types
+- **Cross-Attack Signatures** - Compare LLC across L∞, L2, L1 attacks
+- **Diagnostic Monitoring** - MALA acceptance rates, convergence analysis
+
+### Effective Dimensionality
+- **Hessian Eigenvalue Analysis** - Top eigenvalues via Lanczos iteration
+- **Complexity Evolution** - Track effective dimensionality during training
+- **Defense Method Comparison** - Compare complexity across training methods
+- **Batch Processing** - Analyze multiple models simultaneously
+
+### Comprehensive Evaluation
+- **Training Dynamics** - Loss, accuracy, and robustness evolution
+- **Model Comparison** - Side-by-side analysis of different approaches
+- **Statistical Analysis** - Significance testing and confidence intervals
+- **Rich Visualizations** - Publication-ready plots and figures
+
+## 🔬 Research Applications
+
+### 1. Training Dynamics Analysis
+```bash
+# Generate training dynamics plots with LLC and effective dimensionality
+python generate_comparison_plots.py --mode training_llc \
+    --model_dir ./models/ResNet18_AT \
+    --experiment_dir ./llc_analysis/ResNet18_AT_results \
+    --eff_dim_path ./eff_dim_analysis/ResNet18_AT_results.json
+```
+
+### 2. Defense Method Comparison
+```bash
+# Compare LLC across different defense methods
+python llc_analysis_pipeline.py --mode compare \
+    --config_file model_comparison_config.json \
+    --dataset CIFAR10
+```
+
+### 3. Cross-Attack Analysis
+```bash
+# Test LLC signatures across attack types
+python cross_attack_llc_analysis.py \
+    --model_path ./models/ResNet18_AT/best.pth \
+    --model_name ResNet18 \
+    --calibration_path ./calibration_results.json
+```
+
+## 🖥️ HPC Integration
+
+The project includes comprehensive SLURM job scripts for HPC environments:
+
+### Training Jobs
+```bash
+# Submit adversarial training job
+sbatch training_jobs/run_mair_adv_training_resnet_AT.job
+
+# Submit training with AWP
+sbatch training_jobs/run_mair_adv_training_resnet_AT_awp.job
+```
+
+### Analysis Jobs
+```bash
+# Submit LLC analysis job
+sbatch run_llc_analysis.job
+
+# Submit effective dimensionality analysis
+sbatch run_eff_dim_analysis.job
+
+# Submit cross-attack analysis
+sbatch run_cross_attack_analysis.job
+```
+
+## 📈 Example Workflows
+
+### Workflow 1: Complete Model Analysis
+```bash
+# 1. Train model
+python AT_replication_complete.py --model ResNet18 --method AT
+
+# 2. Analyze LLC trajectory
 python llc_analysis_pipeline.py --mode trajectory \
-    --checkpoint_dir /path/to/checkpoints/ \
-    --model_name ResNet18 \
-    --dataset CIFAR10 \
-    --defense_method PGD \
-    --skip_calibration \
-    --calibration_path /path/to/calibration_results.json
+    --checkpoint_dir ./models/ResNet18_AT/epoch_iter/ \
+    --model_name ResNet18
+
+# 3. Analyze effective dimensionality
+python effective_dimensionality_analysis.py --model ResNet18 --defense AT
+
+# 4. Generate comparison plots
+python generate_comparison_plots.py --mode training_llc \
+    --model_dir ./models/ResNet18_AT \
+    --experiment_dir ./llc_results \
+    --eff_dim_path ./eff_dim_results.json
 ```
 
-### 4. Clean vs Adversarial LLC Comparison
-
+### Workflow 2: Defense Method Comparison
 ```bash
-# Compare LLC on clean vs adversarial data
-python llc_analysis_pipeline.py --mode clean_vs_adv \
-    --checkpoint_dir /path/to/checkpoints/ \
-    --model_name ResNet18 \
-    --dataset CIFAR10 \
-    --defense_method PGD \
-    --adversarial_attack pgd \
-    --adversarial_eps 8/255
+# 1. Train multiple models
+python AT_replication_complete.py --model ResNet18 --method Standard
+python AT_replication_complete.py --model ResNet18 --method AT
+python AT_replication_complete.py --model ResNet18 --method TRADES
+
+# 2. Compare LLC across methods
+python llc_analysis_pipeline.py --mode compare \
+    --config_file defense_comparison.json
+
+# 3. Compare effective dimensionality
+python effective_dimensionality_analysis.py --compare --model ResNet18
 ```
 
-## Configuration
+### Workflow 3: Cross-Attack Investigation
+```bash
+# 1. Train adversarially robust model
+python AT_replication_complete.py --model LeNet --method AT
 
-### LLCConfig Parameters
+# 2. Run cross-attack LLC analysis
+python cross_attack_llc_analysis.py \
+    --model_path ./models/LeNet_AT/best.pth \
+    --model_name LeNet \
+    --calibration_path ./calibration_results.json
 
+# 3. Create cross-attack visualization
+python create_cross_attack_plot.py \
+    --results_dir ./cross_attack_results \
+    --model_name "LeNet (AT)"
+```
+
+## 📊 Output Structure
+
+```
+results/
+├── llc_analysis/
+│   ├── llc_analysis_YYYYMMDD_HHMMSS/
+│   │   ├── ModelName_DefenseMethod_single/
+│   │   │   ├── calibration/
+│   │   │   │   ├── calibration_sweep.png
+│   │   │   │   ├── calibration_results.json
+│   │   │   │   └── llc_calibration_detailed_results.csv
+│   │   │   ├── diagnostics/
+│   │   │   │   ├── loss_trace.png
+│   │   │   │   └── mala_acceptance_trace.png
+│   │   │   └── analysis_results.json
+│   │   └── ModelName_DefenseMethod_trajectory/
+│   │       ├── llc_results/
+│   │       │   ├── llc_trajectory.png
+│   │       │   └── checkpoint_*_llc_results.json
+│   │       └── trajectory_results.json
+│
+├── eff_dim_analysis/
+│   ├── batch_analysis_YYYYMMDD_HHMMSS/
+│   │   ├── ModelName_analysis/
+│   │   │   ├── DefenseMethod_effective_dim.json
+│   │   │   └── DefenseMethod_effective_dim_plot.png
+│   │   └── batch_analysis_summary.json
+│
+├── cross_attack_analysis/
+│   ├── cross_attack_llc_trajectories.json
+│   ├── cross_attack_comparison_plot.png
+│   └── cross_attack_summary_report.txt
+│
+└── comprehensive_evaluation/
+    ├── evaluation_YYYYMMDD_HHMMSS/
+    │   ├── adversarial_evaluation/
+    │   ├── llc_analysis/
+    │   └── plots/
+    └── comparison_plots/
+```
+
+## 🛠️ Configuration
+
+### LLC Configuration
 ```python
+from llc_measurement import LLCConfig
+
 config = LLCConfig(
-    # SGLD hyperparameters
-    epsilon=1e-4,          # Step size (learning rate)
-    gamma=100.0,           # Localization strength
-    nbeta=None,            # Inverse temperature (auto-set if None)
-    
-    # Sampling parameters
-    num_chains=8,          # Number of MCMC chains
-    num_draws=2000,        # Number of samples per chain
-    num_burnin_steps=0,    # Burn-in steps
-    num_steps_bw_draws=1,  # Steps between draws
-    
-    # Batch size for SGLD
-    batch_size=512,
-    
-    # Calibration parameters
-    calibration_epsilons=[1e-5, 1e-4, 1e-3],
-    calibration_gammas=[1.0, 10.0, 100.0],
-    
-    # Data type for LLC evaluation
+    epsilon=1e-4,          # SGLD step size
+    gamma=100.0,           # Localization strength  
+    num_chains=8,          # Number of SGLD chains
+    num_draws=2000,        # Samples per chain
+    batch_size=512,        # SGLD batch size
     data_type="clean",     # "clean", "adversarial", or "mixed"
-    adversarial_attack="pgd",
-    adversarial_eps=8/255,
-    adversarial_steps=10
 )
 ```
 
-## Output Structure
-
-```
-llc_analysis/
-├── {model}_{dataset}_{defense}_trajectory/
-│   ├── calibration/
-│   │   ├── calibration_sweep.png
-│   │   ├── calibration_sweep_normalized.png
-│   │   ├── calibration_results.json
-│   │   └── llc_calibration_detailed_results.csv
-│   ├── llc_results/
-│   │   ├── llc_trajectory.json
-│   │   ├── llc_trajectory.png
-│   │   └── checkpoint_*_llc_results.json
-│   ├── diagnostics/
-│   │   ├── loss_trace.png
-│   │   └── mala_acceptance_trace.png
-│   └── summary_report.txt
-```
-
-## Diagnostic Interpretation
-
-### MALA Acceptance Rate
-- **< 0.5**: Step size too large → Reduce epsilon
-- **0.5 - 0.95**: Good range
-- **> 0.95**: Step size too small → Increase epsilon
-
-### LLC Stability (std/mean)
-- **< 0.1**: Excellent stability
-- **0.1 - 0.2**: Good stability
-- **0.2 - 0.5**: Moderate stability → Consider more chains/draws
-- **> 0.5**: Poor stability → Check hyperparameters
-
-### LLC Values
-- **Negative**: Failure mode → Check step size, model convergence
-- **0 - 100**: Normal range
-- **> 100**: May indicate numerical instability
-
-## Advanced Usage
-
-### Custom Model Loading
-
-```python
-from llc_measurement import LLCMeasurer, LLCConfig
-
-# Initialize measurer
-config = LLCConfig()
-measurer = LLCMeasurer(config)
-
-# Load your model
-model = YourModel()
-model.load_state_dict(torch.load('model.pth'))
-
-# Measure LLC
-results = measurer.estimate_llc(model, train_loader)
-print(f"LLC: {results['llc/mean']:.4f}")
-```
-
-### Batch Processing Multiple Models
-
-```python
-# Compare multiple defense methods
-model_configs = [
-    ("/path/to/clean_model.pth", "ResNet18", "Clean", "Standard training"),
-    ("/path/to/pgd_model.pth", "ResNet18", "PGD", "PGD adversarial training"),
-    ("/path/to/fgsm_model.pth", "ResNet18", "FGSM", "FGSM adversarial training"),
-]
-
-pipeline.compare_defense_methods(model_configs, "CIFAR10")
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Negative LLC values**: Reduce epsilon, increase gamma, or check model convergence
-2. **Low MALA acceptance rate**: Reduce epsilon (step size)
-3. **High LLC variance**: Increase number of chains or draws
-4. **Checkpoint loading errors**: Ensure model architecture matches saved checkpoints
-
-### Performance Tips
-
-1. **Skip calibration** for repeated runs using `--skip_calibration`
-2. **Limit checkpoints** with `--max_checkpoints` for large trajectories
-3. **Use GPU** by setting `device="cuda"` in LLCConfig
-4. **Adjust batch size** based on available memory
-
-## Citation
-
-If you use this pipeline in your research, please cite:
-
-```bibtex
-@article{lau2023local,
-  title={Local Learning Coefficient},
-  author={Lau, Alexander and et al.},
-  journal={arXiv preprint arXiv:2306.12345},
-  year={2023}
+### Model Configuration
+```json
+{
+  "models": [
+    ["./models/ResNet18_AT/best.pth", "ResNet18", "AT", "Adversarial Training"],
+    ["./models/ResNet18_TRADES/best.pth", "ResNet18", "TRADES", "TRADES Defense"],
+    ["./models/ResNet18_MART/best.pth", "ResNet18", "MART", "MART Defense"]
+  ]
 }
 ```
 
-## License
+## 🔍 Key Research Questions
+
+This framework enables investigation of:
+
+1. **How does adversarial training affect model complexity?**
+   - Compare LLC trajectories across defense methods
+   - Analyze effective dimensionality evolution
+
+2. **Do different attack types leave distinct complexity signatures?**
+   - Cross-attack LLC analysis across L∞, L2, L1 norms
+   - Attack-specific complexity patterns
+
+3. **What are the training dynamics of robust models?**
+   - LLC and effective dimensionality during training
+   - Critical transitions and phase changes
+
+4. **How do architectural choices impact robustness-complexity trade-offs?**
+   - Compare LeNet, VGG11, ResNet18 across defense methods
+   - Architecture-specific complexity patterns
+
+## 📚 Documentation
+
+- **[README_LLC.md](README_LLC.md)** - Detailed LLC measurement documentation
+- **[CONFIGURATION_IMPROVEMENTS.md](CONFIGURATION_IMPROVEMENTS.md)** - Configuration and setup guide
+- **[MAIR/README.md](MAIR/README.md)** - MAIR framework documentation
+
+## 🤝 Citation
+
+If you use this framework in your research, please cite:
+
+```bibtex
+@misc{effective_dimensionality_adversarial,
+  title={Effective Dimensionality and Local Learning Coefficient Analysis for Adversarial Training},
+  author={[Your Name]},
+  year={2024},
+  note={Research framework for analyzing model complexity in adversarial training}
+}
+```
+
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For questions, issues, or contributions:
+1. Check existing documentation in `README_LLC.md`
+2. Review configuration guide in `CONFIGURATION_IMPROVEMENTS.md`
+3. Examine example job scripts in `training_jobs/`
+4. Open an issue with detailed information about your setup and error
+
+---

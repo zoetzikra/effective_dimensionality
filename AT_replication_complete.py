@@ -110,14 +110,14 @@ def create_model_and_config(model_name, dataset="CIFAR10"):
         "ResNet18": {
             "n_classes": 10,
             "dataset": "CIFAR10",
-            "epochs": 5000,
+            "epochs": 200, # TODO: Also tried 5000
             "eps": 8/255,
             "alpha": 2/255,
             "steps": 10,
-            "lr": 0.1,
-            # "milestones": [100, 150],  
-            "milestones": [2500, 3750],  
-            "beta": 6.0,  # For TRADES/MART
+            "lr": 0.01,     # TODO: Used to be 0.1
+            "milestones": [100, 150],  
+            # "milestones": [2500, 3750],  
+            "beta": 3.0,  # For TRADES/MART # TODO: Used to be 6.0
         }
     }
     

@@ -20,32 +20,73 @@ source activate devinterp_env
 
 
 # # Step 1: Generate clean trajectory
+python comprehensive_model_evaluation.py \
+    --mode clean-test-llc \
+    --checkpoint_dir ./models/LeNet_Standard/epoch_iter/ \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method Standard \
+    --max_checkpoints 30 \
+    --calibration_path ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/calibration/calibration_results.json \
+    --skip_calibration \
+    --output_dir ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/clean_results/
+
+
+# # Step 2: Generate adversarial trajectory  
+python comprehensive_model_evaluation.py \
+    --mode adv-data-llc \
+    --checkpoint_dir ./models/LeNet_Standard/epoch_iter/ \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method Standard \
+    --max_checkpoints 30 \
+    --calibration_path ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/calibration/calibration_results.json \
+    --skip_calibration \
+    --output_dir ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/adversarial_results/
+
+
+# Step 3: Plot comparison
+python comprehensive_model_evaluation.py \
+    --mode plot-compare-trajectories \
+    --model_path ./models/LeNet_Standard/best.pth \
+    --model_name LeNet \
+    --dataset MNIST \
+    --defense_method Standard \
+    --clean_trajectory_path /home/ztzifa/effective_dimensionality/llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/clean_results/clean_test_llc_trajectory.json \
+    --adv_trajectory_path /home/ztzifa/effective_dimensionality/llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/adversarial_results/adversarial_test_llc_trajectory.json \
+    --save_name LeNet_MNIST_Standard_test_trajectory
+
+
+# python compare_final_llc_values.py
+python fix_multi_epsilon_plot.py
+
+
+# # Step 1: Generate clean trajectory
 # python comprehensive_model_evaluation.py \
 #     --mode clean-test-llc \
-#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter/ \
+#     --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
 #     --model_name LeNet \
 #     --dataset MNIST \
-#     --defense_method Standard \
+#     --defense_method AT \
 #     --max_checkpoints 30 \
-#     --calibration_path ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/calibration/calibration_results.json \
+#     --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
 #     --skip_calibration \
-#     --output_dir ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/clean_results/
+#     --output_dir ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/test_trajectory_data/clean_results/
 
 
 # # Step 2: Generate adversarial trajectory  
 # python comprehensive_model_evaluation.py \
 #     --mode adv-data-llc \
-#     --checkpoint_dir ./models/LeNet_Standard/epoch_iter/ \
+#     --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
 #     --model_name LeNet \
 #     --dataset MNIST \
-#     --defense_method Standard \
+#     --defense_method AT \
 #     --max_checkpoints 30 \
-#     --calibration_path ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/calibration/calibration_results.json \
+#     --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
 #     --skip_calibration \
-#     --output_dir ./llc_analysis/llc_analysis_LeNet_Standard/LeNet_Standard_clean_vs_adv/test_trajectory_data/adversarial_results/
+#     --output_dir ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/test_trajectory_data/adversarial_results/
 
 
-# Step 3: Plot comparison
 # python comprehensive_model_evaluation.py \
 #     --mode plot-compare-trajectories \
 #     --model_path ./models/LeNet_Standard/best.pth \
@@ -57,31 +98,13 @@ source activate devinterp_env
 #     --save_name LeNet_MNIST_Standard_test_trajectory
 
 
-# python compare_final_llc_values.py
-
-
-# Step 1: Generate clean trajectory
-python comprehensive_model_evaluation.py \
-    --mode clean-test-llc \
-    --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
-    --model_name LeNet \
-    --dataset MNIST \
-    --defense_method AT \
-    --max_checkpoints 30 \
-    --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
-    --skip_calibration \
-    --output_dir ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/test_trajectory_data/clean_results/
-
-
-# Step 2: Generate adversarial trajectory  
-python comprehensive_model_evaluation.py \
-    --mode adv-data-llc \
-    --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
-    --model_name LeNet \
-    --dataset MNIST \
-    --defense_method AT \
-    --max_checkpoints 30 \
-    --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
-    --skip_calibration \
-    --output_dir ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/test_trajectory_data/adversarial_results/
-
+# python comprehensive_model_evaluation.py \
+#     --mode adv-data-llc \
+#     --checkpoint_dir ./models/LeNet_AT/epoch_iter/ \
+#     --model_name LeNet \
+#     --dataset MNIST \
+#     --test_multiple_epsilons \
+#     --max_checkpoints 30 \
+#     --calibration_path ./llc_analysis/llc_analysis_LeNet_AT/LeNet_AT_clean_vs_adv/calibration/calibration_results.json \
+#     --skip_calibration \
+#     --output_dir ./epsilon_analysis/

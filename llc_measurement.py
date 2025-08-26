@@ -253,6 +253,10 @@ class LLCMeasurer:
         
         if self.config.adversarial_attack.lower() == "pgd":
             return self._pgd_attack(model, inputs, targets)
+        elif self.config.adversarial_attack.lower() == "pgd_l2":
+            return self._pgd_l2_attack(model, inputs, targets)
+        elif self.config.adversarial_attack.lower() == "pgd_l1":
+            return self._pgd_l1_attack(model, inputs, targets)
         elif self.config.adversarial_attack.lower() == "fgsm":
             return self._fgsm_attack(model, inputs, targets)
         else:
@@ -325,6 +329,113 @@ class LLCMeasurer:
             for param in model.parameters():
                 param.requires_grad_(True)
             # Clear gradients again
+            model.zero_grad()
+        
+        return inputs_adv.detach()
+    
+    def _pgd_l2_attack(self, model: nn.Module, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """PGD L2 attack implementation"""
+        # Clear any existing gradients
+        model.zero_grad()
+        
+        # Disable gradients for model parameters during adversarial generation
+        for param in model.parameters():
+            param.requires_grad_(False)
+        
+        inputs_adv = inputs.clone().detach().requires_grad_(True)
+        
+        try:
+            for step in range(self.config.adversarial_steps):
+                # Zero gradients
+                if inputs_adv.grad is not None:
+                    inputs_adv.grad.zero_()
+                
+                # Forward pass
+                outputs = model(inputs_adv)
+                loss = nn.CrossEntropyLoss()(outputs, targets)
+                
+                # Backward pass to compute gradients
+                loss.backward()
+                
+                with torch.no_grad():
+                    # L2 gradient normalization
+                    grad = inputs_adv.grad.data
+                    grad_norm = grad.view(grad.shape[0], -1).norm(dim=1, keepdim=True)
+                    grad_norm = grad_norm.view(-1, *([1] * (len(grad.shape) - 1)))
+                    grad_normalized = grad / (grad_norm + 1e-12)
+                    
+                    # L2 PGD step
+                    alpha = self.config.adversarial_eps / self.config.adversarial_steps * 2.5
+                    inputs_adv = inputs_adv + alpha * grad_normalized
+                    
+                    # L2 projection
+                    delta = inputs_adv - inputs
+                    delta_norm = delta.view(delta.shape[0], -1).norm(dim=1, keepdim=True)
+                    delta_norm = delta_norm.view(-1, *([1] * (len(delta.shape) - 1)))
+                    delta = delta * torch.min(torch.ones_like(delta_norm), 
+                                            self.config.adversarial_eps / (delta_norm + 1e-12))
+                    inputs_adv = inputs + delta
+                    inputs_adv = torch.clamp(inputs_adv, 0, 1)
+                    inputs_adv.requires_grad_(True)
+        finally:
+            # Re-enable gradients for model parameters
+            for param in model.parameters():
+                param.requires_grad_(True)
+            model.zero_grad()
+        
+        return inputs_adv.detach()
+    
+    def _pgd_l1_attack(self, model: nn.Module, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """PGD L1 attack implementation"""
+        # Clear any existing gradients
+        model.zero_grad()
+        
+        # Disable gradients for model parameters during adversarial generation
+        for param in model.parameters():
+            param.requires_grad_(False)
+        
+        inputs_adv = inputs.clone().detach().requires_grad_(True)
+        
+        try:
+            for step in range(self.config.adversarial_steps):
+                # Zero gradients
+                if inputs_adv.grad is not None:
+                    inputs_adv.grad.zero_()
+                
+                # Forward pass
+                outputs = model(inputs_adv)
+                loss = nn.CrossEntropyLoss()(outputs, targets)
+                
+                # Backward pass to compute gradients
+                loss.backward()
+                
+                with torch.no_grad():
+                    # L1 gradient sign
+                    grad = inputs_adv.grad.data
+                    grad_sign = grad.sign()
+                    
+                    # L1 PGD step
+                    alpha = self.config.adversarial_eps / self.config.adversarial_steps
+                    inputs_adv = inputs_adv + alpha * grad_sign
+                    
+                    # L1 projection
+                    delta = inputs_adv - inputs
+                    delta_flat = delta.view(delta.shape[0], -1)
+                    
+                    # L1 projection using soft thresholding
+                    l1_norm = delta_flat.abs().sum(dim=1, keepdim=True)
+                    scaling = torch.min(torch.ones_like(l1_norm), 
+                                      self.config.adversarial_eps / (l1_norm + 1e-12))
+                    delta_flat = delta_flat * scaling
+                    delta = delta_flat.view(delta.shape)
+                    
+                    inputs_adv = inputs + delta
+                    inputs_adv = torch.clamp(inputs_adv, 0, 1)
+                    inputs_adv.requires_grad_(True)
+        finally:
+            # Re-enable gradients for model parameters
+            for param in model.parameters():
+                param.requires_grad_(True)
             model.zero_grad()
         
         return inputs_adv.detach()
